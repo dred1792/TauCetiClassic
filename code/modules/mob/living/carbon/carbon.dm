@@ -10,7 +10,7 @@
 	..()
 
 	// Increase germ_level regularly
-	if(germ_level < GERM_LEVEL_AMBIENT && prob(80))	//if you're just standing there, you shouldn't get more germs beyond an ambient level
+	if(germ_level < GERM_LEVEL_AMBIENT && prob(80) && !IS_IN_STASIS(src))	//if you're just standing there, you shouldn't get more germs beyond an ambient level
 		germ_level++
 
 /mob/living/carbon/Move(NewLoc, Dir = 0, step_x = 0, step_y = 0)
@@ -20,11 +20,13 @@
 		if(nutrition && stat != DEAD)
 			var/met_factor = get_metabolism_factor()
 			nutrition -= met_factor * 0.01
-			if(has_trait(TRAIT_STRESS_EATER))
-				nutrition -= met_factor * getHalLoss() * (m_intent == "run" ? 0.02 : 0.01) // Which is actually a lot if you come to think of it.
+			if(HAS_TRAIT(src, TRAIT_STRESS_EATER))
+				var/pain = getHalLoss()
+				if(pain > 0)
+					nutrition -= met_factor * pain * (m_intent == "run" ? 0.02 : 0.01) // Which is actually a lot if you come to think of it.
 			if(m_intent == "run")
 				nutrition -= met_factor * 0.01
-		if((FAT in mutations) && m_intent == "run" && bodytemperature <= 360)
+		if(HAS_TRAIT(src, TRAIT_FAT) && m_intent == "run" && bodytemperature <= 360)
 			bodytemperature += 2
 
 		// Moving around increases germ_level faster
@@ -51,9 +53,7 @@
 		return
 	if(user in src.stomach_contents)
 		if(prob(40))
-			for(var/mob/M in hearers(4, src))
-				if(M.client)
-					M.show_message(text("<span class='rose'>You hear something rumbling inside [src]'s stomach...</span>"), 2)
+			audible_message("<span class='rose'>You hear something rumbling inside [src]'s stomach...</span>", hearing_distance = 4)
 			var/obj/item/I = user.get_active_hand()
 			if(I && I.force)
 				var/d = rand(round(I.force / 4), I.force)
@@ -64,10 +64,8 @@
 					H.updatehealth()
 				else
 					src.take_bodypart_damage(d)
-				for(var/mob/M in viewers(user, null))
-					if(M.client)
-						M.show_message(text("<span class='danger'>[user] attacks [src]'s stomach wall with the [I.name]!</span>"), 2)
-				playsound(user.loc, 'sound/effects/attackblob.ogg', 50, 1)
+				visible_message("<span class='danger'>[user] attacks [src]'s stomach wall with the [I.name]!</span>")
+				playsound(user, 'sound/effects/attackblob.ogg', VOL_EFFECTS_MASTER)
 
 				if(prob(src.getBruteLoss() - 50))
 					for(var/atom/movable/A in stomach_contents)
@@ -88,9 +86,7 @@
 		if(M in src.stomach_contents)
 			src.stomach_contents.Remove(M)
 		M.loc = src.loc
-		for(var/mob/N in viewers(src, null))
-			if(N.client)
-				N.show_message(text("<span class='danger'>[M] bursts out of [src]!</span>"), 2)
+		visible_message("<span class='danger'>[M] bursts out of [src]!</span>")
 	. = ..()
 
 /mob/living/carbon/MiddleClickOn(atom/A)
@@ -139,14 +135,14 @@
 	var/obj/effect/fluid/F = locate() in T
 	if(F)
 		attack_log += "\[[time_stamp()]\]<font color='red'> [src] was shocked by the [source] and started chain-reaction with water!</font>"
-		msg_admin_attack("[key_name(src)] was shocked by the [source] and started chain-reaction with water! [ADMIN_JMP(src)]")
+		msg_admin_attack("[key_name(src)] was shocked by the [source] and started chain-reaction with water!", src)
 		F.electrocute_act(shock_damage)
 
 	shock_damage *= siemens_coeff
 	if(shock_damage<1)
 		return 0
 	apply_damage(shock_damage, BURN, def_zone, used_weapon="Electrocution")
-	playsound(loc, "sparks", 50, 1, -1)
+	playsound(src, pick(SOUNDIN_SPARKS), VOL_EFFECTS_MASTER)
 	if(shock_damage > 10)
 		visible_message(
 			"<span class='rose'>[src] was shocked by the [source]!</span>", \
@@ -178,6 +174,14 @@
 			if(item_in_hand:wielded)
 				to_chat(usr, "<span class='warning'>Your other hand is too busy holding the [item_in_hand.name]</span>")
 				return
+		else if(istype(item_in_hand, /obj/item/weapon/gun/energy/sniperrifle))
+			var/obj/item/weapon/gun/energy/sniperrifle/s = item_in_hand
+			if(s.zoom)
+				s.toggle_zoom()
+		else if(istype(item_in_hand, /obj/item/weapon/gun/energy/pyrometer/ce))
+			var/obj/item/weapon/gun/energy/pyrometer/ce/C = item_in_hand
+			if(C.zoomed)
+				C.toggle_zoom()
 	src.hand = !( src.hand )
 	if(hud_used.l_hand_hud_object && hud_used.r_hand_hud_object)
 		if(hand)	//This being 1 means the left hand is in use
@@ -216,6 +220,7 @@
 
 			for(var/obj/item/organ/external/BP in H.bodyparts)
 				var/status = ""
+				var/BPname = BP.name
 				var/brutedamage = BP.brute_dam
 				var/burndamage = BP.burn_dam
 				if(halloss > 0)
@@ -241,13 +246,14 @@
 				else if(burndamage > 0)
 					status += "numb"
 
-				if(BP.status & ORGAN_DESTROYED)
+				if(BP.is_stump)
 					status = "MISSING!"
+					BPname = parse_zone(BP.body_zone)
 				if(BP.status & ORGAN_MUTATED)
 					status = "weirdly shapen."
 				if(status == "")
 					status = "OK"
-				src.show_message(text("\t []My [] is [].", status == "OK" ? "\blue " : "\red ", BP.name,status), 1)
+				to_chat(src, "\t <span class='[status == "OK" ? "notice " : "warning"]'>My [BPname] is [status].</span>")
 
 			if(roundstart_quirks.len)
 				to_chat(src, "<span class='notice'>You have these traits: [get_trait_string()].</span>")
@@ -265,9 +271,9 @@
 				H.w_uniform.add_fingerprint(M)
 
 			if(lying)
-				src.sleeping = max(0,src.sleeping-5)
+				AdjustSleeping(-10 SECONDS)
 				if (!M.lying)
-					if(!src.sleeping)
+					if(!IsSleeping())
 						src.resting = 0
 					if(src.crawling)
 						if(crawl_can_use() && src.pass_flags & PASSCRAWL)
@@ -276,7 +282,7 @@
 					M.visible_message("<span class='notice'>[M] shakes [src] trying to wake [t_him] up!</span>", \
 										"<span class='notice'>You shake [src] trying to wake [t_him] up!</span>")
 				else
-					if(!src.sleeping)
+					if(!IsSleeping())
 						M.visible_message("<span class='notice'>[M] cuddles with [src] to make [t_him] feel better!</span>", \
 								"<span class='notice'>You cuddle with [src] to make [t_him] feel better!</span>")
 					else
@@ -303,7 +309,7 @@
 			AdjustStunned(-3)
 			AdjustWeakened(-3)
 
-			playsound(src.loc, 'sound/weapons/thudswoosh.ogg', 50, 1, -1)
+			playsound(src, 'sound/weapons/thudswoosh.ogg', VOL_EFFECTS_MASTER)
 
 /mob/living/carbon/proc/crawl_can_use()
 	var/turf/T = get_turf(src)
@@ -316,7 +322,7 @@
 	set name = "Crawl"
 	set category = "IC"
 
-	if( stat || weakened || stunned || paralysis || resting || sleeping || (status_flags & FAKEDEATH) || buckled)
+	if( stat || weakened || stunned || paralysis || resting || (status_flags & FAKEDEATH) || buckled)
 		return
 	if(crawl_getup)
 		return
@@ -326,7 +332,7 @@
 		if(do_after(src, 10, target = src))
 			crawl_getup = FALSE
 			if(!crawl_can_use())
-				playsound(loc, 'sound/weapons/tablehit1.ogg', 50, 1)
+				playsound(src, 'sound/weapons/tablehit1.ogg', VOL_EFFECTS_MASTER)
 				if(ishuman(src))
 					var/mob/living/carbon/human/H = src
 					var/obj/item/organ/external/BP = H.bodyparts_by_name[BP_HEAD]
@@ -408,14 +414,20 @@
 	return
 
 /mob/living/carbon/throw_item(atom/target)
-	src.throw_mode_off()
+	throw_mode_off()
 	if(usr.stat || !target)
 		return
-	if(target.type == /obj/screen) return
+	if(target.type == /obj/screen)
+		return
 
-	var/atom/movable/item = src.get_active_hand()
+	var/atom/movable/item = get_active_hand()
+	if(!item)
+		return
 
-	if(!item || !item:canremove) return
+	if(istype(item, /obj/item))
+		var/obj/item/W = item
+		if(!W.canremove || W.flags & NODROP)
+			return
 
 	if (istype(item, /obj/item/weapon/grab))
 		var/obj/item/weapon/grab/G = item
@@ -431,7 +443,7 @@
 
 				M.attack_log += text("\[[time_stamp()]\] <font color='orange'>Has been thrown by [usr.name] ([usr.ckey]) from [start_T_descriptor] with the target [end_T_descriptor]</font>")
 				usr.attack_log += text("\[[time_stamp()]\] <font color='red'>Has thrown [M.name] ([M.ckey]) from [start_T_descriptor] with the target [end_T_descriptor]</font>")
-				msg_admin_attack("[usr.name] ([usr.ckey]) has thrown [M.name] ([M.ckey]) from [start_T_descriptor] with the target [end_T_descriptor] (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[usr.x];Y=[usr.y];Z=[usr.z]'>JMP</a>)")
+				msg_admin_attack("[usr.name] ([usr.ckey]) has thrown [M.name] ([M.ckey]) from [start_T_descriptor] with the target [end_T_descriptor]", usr)
 
 	if(!item) return //Grab processing has a chance of returning null
 
@@ -539,11 +551,11 @@
 	set name = "Sleep"
 	set category = "IC"
 
-	if(sleeping)
+	if(IsSleeping())
 		to_chat(src, "<span class='rose'>You are already sleeping</span>")
 		return
 	if(alert(src, "You sure you want to sleep for a while?","Sleep","Yes","No") == "Yes")
-		sleeping = 20 //Short nap
+		SetSleeping(40 SECONDS) //Short nap
 
 //Brain slug proc for voluntary removal of control.
 /mob/living/carbon/proc/release_control()
@@ -609,8 +621,8 @@
 	if(B.chemicals >= 100)
 		to_chat(src, "<span class='danger'>Your host twitches and quivers as you rapdly excrete several larvae from your sluglike body.</span>")
 		B.chemicals -= 100
-		var/turf/T = get_turf(src)
-		T.add_vomit_floor(src)
+
+		vomit()
 		new /mob/living/simple_animal/borer(get_turf(src))
 	else
 		to_chat(src, "<span class='info'>You do not have enough chemicals stored to reproduce.</span>")
@@ -833,7 +845,7 @@
 						var/mob/living/carbon/human/H = C
 						if(istype(H.head, /obj/item/clothing/head/helmet/space) && istype(H.wear_suit, /obj/item/clothing/suit/space))
 							internalsound = 'sound/misc/riginternaloff.ogg'
-					playsound(src, internalsound, 85, 0, -5)
+					playsound(src, internalsound, VOL_EFFECTS_MASTER, null, FALSE, -5)
 				else if(ITEM && istype(ITEM, /obj/item/weapon/tank) && wear_mask && (wear_mask.flags & MASKINTERNALS))
 					internal = ITEM
 					internal.add_fingerprint(usr)
@@ -844,7 +856,7 @@
 						var/mob/living/carbon/human/H = C
 						if(istype(H.head, /obj/item/clothing/head/helmet/space) && istype(H.wear_suit, /obj/item/clothing/suit/space))
 							internalsound = 'sound/misc/riginternalon.ogg'
-					playsound(src, internalsound, 85, 0, -5)
+					playsound(src, internalsound, VOL_EFFECTS_MASTER, null, FALSE, -5)
 
 					if(ITEM.air_contents && LAZYLEN(ITEM.air_contents.gas))
 						gas_log_string = " (gases:"
@@ -857,3 +869,39 @@
 				visible_message("<span class='danger'>[usr] [internal ? "opens" : "closes"] the valve on [src]'s [ITEM.name].</span>")
 				attack_log += text("\[[time_stamp()]\] <font color='orange'>Had their internals [internal ? "open" : "close"] by [usr.name] ([usr.ckey])[gas_log_string]</font>")
 				usr.attack_log += text("\[[time_stamp()]\] <font color='red'>[internal ? "opens" : "closes"] the valve on [src]'s [ITEM.name][gas_log_string]</font>")
+
+/mob/living/carbon/vomit(punched = FALSE, masked = FALSE)
+	var/mask_ = masked
+	if(head && (head.flags & HEADCOVERSMOUTH))
+		mask_ = TRUE
+
+	. = ..(punched, mask_)
+	if(. && !mask_)
+		if(reagents.total_volume > 0)
+			var/toxins_puked = 0
+			var/datum/reagents/R = new(10)
+
+			while(TRUE)
+				var/datum/reagent/R_V = pick(reagents.reagent_list)
+				if(istype(R_V, /datum/reagent/water))
+					toxins_puked += 0.5
+				else if(R_V.id == "carbon")
+					toxins_puked += 2
+				else if(R_V.id == "anti_toxin")
+					toxins_puked += 3
+				else if(R_V.id == "thermopsis")
+					toxins_puked += 5
+				reagents.trans_id_to(R, R_V.id, 1)
+				if(R.total_volume >= 10)
+					break
+				if(reagents.total_volume <= 0)
+					break
+			R.reaction(loc)
+			adjustToxLoss(-toxins_puked)
+
+/mob/living/carbon/update_stat()
+	if(stat == DEAD)
+		return
+	if(IsSleeping())
+		stat = UNCONSCIOUS
+		blinded = TRUE

@@ -60,9 +60,8 @@
 	name = "shotgun shell"
 	desc = "A 12 gauge shell."
 	icon_state = "gshell"
-	projectile_type = /obj/item/projectile/bullet/pellet
-	pellets = 5
-	variance = 0.8
+	projectile_type = /obj/item/projectile/bullet/buckpellet
+	pellets = 7
 
 /obj/item/ammo_casing/shotgun/beanbag
 	name = "beanbag shell"
@@ -163,10 +162,6 @@
 	desc = "A .30-06 bullet casing."
 	caliber = "a3006"
 	projectile_type = "/obj/item/projectile/bullet/midbullet3"
-
-/obj/item/ammo_casing/l10
-	caliber = "energy"
-	projectile_type = "/obj/item/projectile/l10"
 
 /obj/item/ammo_casing/flare
 	desc = "A flare for flare gun."

@@ -44,19 +44,21 @@ var/list/airlock_overlays = list()
 	var/inner_material = null //material of inner filling; if its an airlock with glass, this should be set to "glass"
 	var/overlays_file = 'icons/obj/doors/airlocks/station/overlays.dmi'
 
-	var/image/old_frame_overlay //keep those in order to prevent unnecessary updating
+	var/image/old_frame_overlay // keep those in order to prevent unnecessary updating
 	var/image/old_filling_overlay
 	var/image/old_lights_overlay
 	var/image/old_panel_overlay
 	var/image/old_weld_overlay
 	var/image/old_sparks_overlay
 
-	door_open_sound          = 'sound/machines/airlock/airlockToggle.ogg'
-	door_close_sound         = 'sound/machines/airlock/airlockToggle.ogg'
-	var/door_deni_sound      = 'sound/machines/airlock/airlockDenied.ogg'
-	var/door_bolt_up_sound   = 'sound/machines/airlock/airlockBoltsUp.ogg'
-	var/door_bolt_down_sound = 'sound/machines/airlock/airlockBoltsDown.ogg'
-	var/door_forced_sound    = 'sound/machines/airlock/airlockForced.ogg'
+	door_open_sound             = 'sound/machines/airlock/open.ogg'
+	door_close_sound            = 'sound/machines/airlock/close.ogg'
+	var/door_open_forced_sound  = 'sound/machines/airlock/open_force.ogg'
+	var/door_close_forced_sound = 'sound/machines/airlock/close_force.ogg'
+
+	var/door_deni_sound         = 'sound/machines/airlock/access_denied.ogg'
+	var/door_bolt_up_sound      = 'sound/machines/airlock/bolts_up_1.ogg'
+	var/door_bolt_down_sound    = 'sound/machines/airlock/bolts_down_1.ogg'
 
 /obj/machinery/door/airlock/atom_init(mapload, dir = null)
 	..()
@@ -101,7 +103,7 @@ var/list/airlock_overlays = list()
 			else /*if(justzap)*/
 				return
 		else if(user.hallucination > 50 && prob(10) && !operating)
-			to_chat(user, "\red <B>You feel a powerful shock course through your body!</B>")
+			to_chat(user, "<span class='warning'><B>You feel a powerful shock course through your body!</B></span>")
 			user.halloss += 10
 			user.stunned += 10
 			return
@@ -183,14 +185,14 @@ var/list/airlock_overlays = list()
 	if(locked)
 		return
 	locked = 1
-	playsound(src, door_bolt_down_sound, 30, 0, 3)
+	playsound(src, door_bolt_down_sound, VOL_EFFECTS_MASTER, 40, FALSE, -4)
 	update_icon()
 
 /obj/machinery/door/airlock/proc/unbolt()
 	if(!locked)
 		return
 	locked = 0
-	playsound(src, door_bolt_up_sound, 30, 0, 3)
+	playsound(src, door_bolt_up_sound, VOL_EFFECTS_MASTER, 40, FALSE, -4)
 	update_icon()
 
 // shock user with probability prb (if all connections & power are working)
@@ -227,6 +229,7 @@ var/list/airlock_overlays = list()
 		if(AIRLOCK_DENY, AIRLOCK_OPENING, AIRLOCK_CLOSING, AIRLOCK_EMAG)
 			icon_state = "nonexistenticonstate"
 	set_airlock_overlays(state)
+	SSdemo.mark_dirty(src)
 
 /obj/machinery/door/airlock/proc/set_airlock_overlays(state)
 	var/image/frame_overlay
@@ -308,36 +311,36 @@ var/list/airlock_overlays = list()
 			if(p_open)
 				panel_overlay = get_airlock_overlay("panel_opening", overlays_file)
 
-	// Doesn't used overlays.Cut() for performance reasons.
+	// Doesn't used cut_overlays() for performance reasons.
 	if(frame_overlay != old_frame_overlay)
-		overlays -= old_frame_overlay
-		overlays += frame_overlay
+		cut_overlay(old_frame_overlay)
+		add_overlay(frame_overlay)
 		old_frame_overlay = frame_overlay
 	if(filling_overlay != old_filling_overlay)
-		overlays -= old_filling_overlay
-		overlays += filling_overlay
+		cut_overlay(old_filling_overlay)
+		add_overlay(filling_overlay)
 		old_filling_overlay = filling_overlay
 	if(lights_overlay != old_lights_overlay)
 		if(lights_overlay)
 			lights_overlay.layer = LIGHTING_LAYER + 1
 			lights_overlay.plane = LIGHTING_PLANE + 1
-		overlays -= old_lights_overlay
-		overlays += lights_overlay
+		cut_overlay(old_lights_overlay)
+		add_overlay(lights_overlay)
 		old_lights_overlay = lights_overlay
 	if(panel_overlay != old_panel_overlay)
-		overlays -= old_panel_overlay
-		overlays += panel_overlay
+		cut_overlay(old_panel_overlay)
+		add_overlay(panel_overlay)
 		old_panel_overlay = panel_overlay
 	if(weld_overlay != old_weld_overlay)
-		overlays -= old_weld_overlay
-		overlays += weld_overlay
+		cut_overlay(old_weld_overlay)
+		add_overlay(weld_overlay)
 		old_weld_overlay = weld_overlay
 	if(sparks_overlay != old_sparks_overlay)
 		if(sparks_overlay)
 			sparks_overlay.layer = LIGHTING_LAYER + 1
 			sparks_overlay.plane = LIGHTING_PLANE + 1
-		overlays -= old_sparks_overlay
-		overlays += sparks_overlay
+		cut_overlay(old_sparks_overlay)
+		add_overlay(sparks_overlay)
 		old_sparks_overlay = sparks_overlay
 
 /proc/get_airlock_overlay(icon_state, icon_file)
@@ -357,7 +360,7 @@ var/list/airlock_overlays = list()
 			if(deny_animation_check())
 				denying = TRUE
 				update_icon(AIRLOCK_DENY)
-				playsound(src, door_deni_sound, 40, 0, 3)
+				playsound(src, door_deni_sound, VOL_EFFECTS_MASTER, 40, FALSE, 3)
 				sleep(6)
 				update_icon(AIRLOCK_CLOSED)
 				icon_state = "closed"
@@ -544,15 +547,15 @@ var/list/airlock_overlays = list()
 	return ..()
 
 /obj/machinery/door/airlock/attack_paw(mob/user)
-	if(istype(user, /mob/living/carbon/alien/humanoid))
+	if(istype(user, /mob/living/carbon/xenomorph/humanoid))
 		if(welded || locked)
-			to_chat(user, "\red The door is sealed, it cannot be pried open.")
+			to_chat(user, "<span class='warning'>The door is sealed, it cannot be pried open.</span>")
 			return
 		else if(!density)
 			return
 		else if(!user.is_busy(src))
 			to_chat(user, "<span class='red'>You force your claws between the doors and begin to pry them open...</span>")
-			playsound(src, door_forced_sound, 30, 1, -4)
+			playsound(src, 'sound/machines/airlock/creaking.ogg', VOL_EFFECTS_MASTER, 30, null, -4)
 			if(do_after(user,40, target = src) && src)
 				open(1)
 	return
@@ -627,7 +630,7 @@ var/list/airlock_overlays = list()
 				for(var/mob/living/L in get_step(user,cur_dir))
 					L.adjustBruteLoss(rand(20,60))
 				break
-		playsound(src,'sound/weapons/thudswoosh.ogg', 50, 1)
+		playsound(src, 'sound/weapons/thudswoosh.ogg', VOL_EFFECTS_MASTER)
 		user.visible_message("<span class='userdanger'>The [user] forces the [src] open with a bare hands!</span>",\
 				"<span class='userdanger'>You force the [src] open with a bare hands!</span>",\
 				"You hear metal strain, and a door open.")
@@ -638,7 +641,7 @@ var/list/airlock_overlays = list()
 	if(ishuman(user) && prob(40) && density)
 		var/mob/living/carbon/human/H = user
 		if(H.getBrainLoss() >= 60)
-			playsound(src, 'sound/effects/bang.ogg', 25, 1)
+			playsound(src, 'sound/effects/bang.ogg', VOL_EFFECTS_MASTER, 25)
 			if(!istype(H.head, /obj/item/clothing/head/helmet))
 				visible_message("<span class='userdanger'> [user] headbutts the airlock.</span>")
 				var/obj/item/organ/external/BP = H.bodyparts_by_name[BP_HEAD]
@@ -868,9 +871,9 @@ var/list/airlock_overlays = list()
 		user.do_attack_animation(src)
 		user.SetNextMove(CLICK_CD_MELEE)
 		visible_message("<span class='userdanger'>[user] has punched the [src]!</span>")
-		playsound(loc, 'sound/effects/grillehit.ogg', 50, 1)
+		playsound(src, 'sound/effects/grillehit.ogg', VOL_EFFECTS_MASTER)
 		if(W.use_charge(user) && prob(20))
-			playsound(loc, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), 50, 1)
+			playsound(src, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), VOL_EFFECTS_MASTER)
 			door_rupture(user)
 		return
 
@@ -902,7 +905,7 @@ var/list/airlock_overlays = list()
 		return attack_hand(user)
 	else if(istype(C, /obj/item/weapon/pai_cable))	// -- TLE
 		var/obj/item/weapon/pai_cable/cable = C
-		cable.plugin(src, user)
+		cable.afterattack(src, user)
 	else if(iscrowbar(C) || istype(C, /obj/item/weapon/twohanded/fireaxe) )
 		var/beingcrowbarred = null
 		if(iscrowbar(C) )
@@ -913,7 +916,7 @@ var/list/airlock_overlays = list()
 			if(user.is_busy(src)) return
 			user.visible_message("[user] removes the electronics from the airlock assembly.", "You start to remove electronics from the airlock assembly.")
 			if(C.use_tool(src, user, 40, volume = 100))
-				to_chat(user, "\blue You removed the airlock electronics!")
+				to_chat(user, "<span class='notice'>You removed the airlock electronics!</span>")
 
 				var/obj/structure/door_assembly/da = new assembly_type(loc)
 				da.anchored = 1
@@ -958,7 +961,7 @@ var/list/airlock_overlays = list()
 					if(F:wielded)
 						spawn(0)	open(1)
 					else
-						to_chat(user, "\red You need to be wielding the Fire axe to do that.")
+						to_chat(user, "<span class='warning'>You need to be wielding the Fire axe to do that.</span>")
 				else
 					spawn(0)	open(1)
 			else
@@ -967,7 +970,7 @@ var/list/airlock_overlays = list()
 					if(F:wielded)
 						spawn(0)	close(1)
 					else
-						to_chat(user, "\red You need to be wielding the Fire axe to do that.")
+						to_chat(user, "<span class='warning'>You need to be wielding the Fire axe to do that.</span>")
 				else
 					spawn(0)	close(1)
 
@@ -977,9 +980,8 @@ var/list/airlock_overlays = list()
 		..()
 	return
 
-/obj/machinery/door/airlock/phoron/attackby(C, mob/user)
-	if(C)
-		ignite(is_hot(C))
+/obj/machinery/door/airlock/phoron/attackby(obj/item/I, mob/user)
+	ignite(I.get_current_temperature())
 	..()
 
 /obj/machinery/door/airlock/proc/close_unsafe(bolt_after = FALSE)
@@ -1028,6 +1030,9 @@ var/list/airlock_overlays = list()
 		closeOther.close()
 	if(hasPower())
 		use_power(50)
+		door_open_sound = initial(door_open_sound)
+	else
+		door_open_sound = door_open_forced_sound
 	..()
 	autoclose()
 
@@ -1035,17 +1040,27 @@ var/list/airlock_overlays = list()
 	send_status_if_allowed()
 	if(hasPower())
 		use_power(50)
+		door_close_sound = initial(door_close_sound)
+	else
+		door_close_sound = door_close_forced_sound
 	..()
 
 /obj/machinery/door/airlock/do_afterclose()
 	for(var/turf/T in locs)
 		for(var/mob/living/M in T)
 			if(isrobot(M))
-				M.adjustBruteLoss(DOOR_CRUSH_DAMAGE)
+				M.adjustBruteLoss(DOOR_CRUSH_DAMAGE * 0.5)
 			else
 				M.adjustBruteLoss(DOOR_CRUSH_DAMAGE)
 				M.SetStunned(5)
 				M.SetWeakened(5)
+
+			var/turf/mob_turf = get_turf(M)
+			for(var/dir in cardinal)
+				var/turf/new_turf = get_step(mob_turf, dir)
+				if(M.Move(new_turf))
+					break
+
 			M.visible_message("<span class='red'>[M] was crushed by the [src] door.</span>",
 			                  "<span class='danger'>[src] door crushed you.</span>")
 
@@ -1090,7 +1105,7 @@ var/list/airlock_overlays = list()
 		optionlist = list("Public", "Engineering", "Atmospherics", "Security", "Command", "Medical", "Research", "Mining", "Maintenance", "External", "High Security")
 
 	var/paintjob = input(user, "Please select a paintjob for this airlock.") in optionlist
-	if((!in_range(src, usr) && loc != usr) || !W.use(user))
+	if((!in_range(src, usr) && loc != usr) || !W.use(10))
 		return
 	switch(paintjob)
 		if("Public")
@@ -1161,12 +1176,12 @@ var/list/airlock_overlays = list()
 	. = ..()
 	var/image/fire_overlay = image("icon"='icons/effects/effects.dmi', "icon_state"="s_fire", "layer" = (LIGHTING_LAYER + 1))
 	fire_overlay.plane = LIGHTING_PLANE + 1
-	overlays += fire_overlay
+	add_overlay(fire_overlay)
 	START_PROCESSING(SSobj, src)
 
 /obj/structure/door_scrap/process()
 	if(ticker >= 300)
-		overlays.Cut()
+		cut_overlays()
 		STOP_PROCESSING(SSobj, src)
 		return
 	ticker++

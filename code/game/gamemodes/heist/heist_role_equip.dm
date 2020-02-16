@@ -81,7 +81,7 @@ var/global/raider_tick = 1
 	stutter = 10
 	agony = 55
 
-/obj/item/projectile/bullet/weakbullet/nl_rifle/on_hit(atom/target, blocked = 0)
+/obj/item/projectile/bullet/weakbullet/nl_rifle/on_hit(atom/target, def_zone = BP_CHEST, blocked = 0)
 	if(issilicon(target))
 		var/mob/living/silicon/S = target
 		S.take_bodypart_damage(20)//+10=30
@@ -95,7 +95,7 @@ var/global/raider_tick = 1
 	stutter = 10
 	agony = 30
 
-/obj/item/projectile/bullet/weakbullet/nl_pistol/on_hit(atom/target, blocked = 0)
+/obj/item/projectile/bullet/weakbullet/nl_pistol/on_hit(atom/target, def_zone = BP_CHEST, blocked = 0)
 	if(issilicon(target))
 		var/mob/living/silicon/S = target
 		S.take_bodypart_damage(10)//+10=20
@@ -119,7 +119,7 @@ var/global/raider_tick = 1
 
 /obj/item/weapon/grenade/monsternade/prime()
 	..()
-	playsound(src.loc, 'sound/effects/bang.ogg', 50, 1, 5)
+	playsound(src, 'sound/effects/bang.ogg', VOL_EFFECTS_MASTER)
 	switch(rand(1,4))
 		if(1)
 			for(var/i=0,i<2,i++)

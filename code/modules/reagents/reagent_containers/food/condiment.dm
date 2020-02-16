@@ -65,22 +65,20 @@
 		if(reagents.total_volume)
 			reagents.trans_to_ingest(M, 10)
 
-		playsound(M.loc, 'sound/items/drink.ogg', rand(10, 50), 1)
+		playsound(M, 'sound/items/drink.ogg', VOL_EFFECTS_MASTER, rand(10, 50))
 		return 1
 	else
-		for(var/mob/O in viewers(world.view, user))
-			O.show_message("<span class='rose'> [user] attempts to feed [M] [src].</span>", 1)
+		user.visible_message("<span class='rose'> [user] attempts to feed [M] [src].</span>")
 		if(!do_mob(user, M)) return
-		for(var/mob/O in viewers(world.view, user))
-			O.show_message("<span class='rose'> [user] feeds [M] [src].</span>", 1)
+		user.visible_message("<span class='rose'> [user] feeds [M] [src].</span>")
 		M.attack_log += text("\[[time_stamp()]\] <font color='orange'>Has been fed [src.name] by [user.name] ([user.ckey]) Reagents: [reagentlist(src)]</font>")
 		user.attack_log += text("\[[time_stamp()]\] <font color='red'>Fed [src.name] by [M.name] ([M.ckey]) Reagents: [reagentlist(src)]</font>")
-		msg_admin_attack("[user.name] ([user.ckey]) fed [M.name] ([M.ckey]) with [src.name] (INTENT: [uppertext(user.a_intent)]) (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)")
+		msg_admin_attack("[user.name] ([user.ckey]) fed [M.name] ([M.ckey]) with [src.name] (INTENT: [uppertext(user.a_intent)])", user)
 
 		if(reagents.total_volume)
 			reagents.trans_to_ingest(M, 10)
 
-		playsound(M.loc,'sound/items/drink.ogg', rand(10,50), 1)
+		playsound(M,'sound/items/drink.ogg', VOL_EFFECTS_MASTER, rand(10, 50))
 		return 1
 	return 0
 
@@ -92,7 +90,8 @@
 		if(!target.reagents.total_volume)
 			to_chat(user, "<span class='rose'> [target] is empty.</span>")
 			return
-
+		if (!reagents.maximum_volume)
+			to_chat(user, "<span class='rose'> [src] can't hold this.</span>")
 		if(reagents.total_volume >= reagents.maximum_volume)
 			to_chat(user, "<span class='rose'> [src] is full.</span>")
 			return
@@ -104,6 +103,9 @@
 	else if(target.is_open_container() || istype(target, /obj/item/weapon/reagent_containers/food/snacks))
 		if(!reagents.total_volume)
 			to_chat(user, "<span class='rose'> [src] is empty.</span>")
+			return
+		if (!target.reagents.maximum_volume)
+			to_chat(user, "<span class='rose'> [target] can't hold this.</span>")
 			return
 		if(target.reagents.total_volume >= target.reagents.maximum_volume)
 			to_chat(user, "<span class='rose'> you can't add anymore to [target].</span>")
@@ -139,7 +141,7 @@
 
 /obj/item/weapon/condiment_shelf/attackby(obj/O, mob/user)
 	if(istype(O, /obj/item/weapon/wrench))
-		playsound(loc, 'sound/items/Ratchet.ogg', 50, 1)
+		playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 		new /obj/item/stack/sheet/wood(src.loc)
 		qdel(src)
 		return
@@ -203,7 +205,7 @@
 			return
 		user.visible_message("<span class='warning'>[user] starts to disassemble \the [src].</span>")
 		if(do_after(user, 20, target = src))
-			playsound(loc, 'sound/items/Ratchet.ogg', 50, 1)
+			playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 			new /obj/item/weapon/condiment_shelf(src.loc)
 			for(var/obj/item/I in contents)
 				I.forceMove(get_turf(src))
@@ -222,7 +224,7 @@
 
 /obj/structure/condiment_shelf/attack_hand(mob/user)
 	if(contents.len)
-		var/obj/item/weapon/reagent_containers/food/condiment/choice = input("Which condiment would you like to remove from the shelf?") in contents as obj|null
+		var/obj/item/weapon/reagent_containers/food/condiment/choice = input("Which condiment would you like to remove from the shelf?") in contents
 		if(choice)
 			if(!usr.canmove || usr.stat || usr.restrained() || !in_range(loc, usr) || usr.incapacitated())
 				return
@@ -251,7 +253,7 @@
 				qdel(src)
 
 /obj/structure/condiment_shelf/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(!contents.len)
 		return
 	var/cond_number = 0
@@ -259,7 +261,7 @@
 		if(F.type in can_be_placed)
 			var/mutable_appearance/condiment = mutable_appearance(icon, "[initial(F.icon_state)]")
 			condiment.pixel_x += cond_number
-			overlays += condiment
+			add_overlay(condiment)
 			cond_number += 4
 
 //////////////////////

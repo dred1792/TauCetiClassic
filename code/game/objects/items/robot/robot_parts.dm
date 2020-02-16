@@ -7,30 +7,35 @@
 	slot_flags = SLOT_FLAGS_BELT
 	var/part = null
 	var/sabotaged = 0 //Emagging limbs can have repercussions when installed as prosthetics.
+	var/bodypart_type
 
 /obj/item/robot_parts/l_arm
 	name = "robot left arm"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "l_arm"
 	part = BP_L_ARM
+	bodypart_type = /obj/item/organ/external/l_arm/robot
 
 /obj/item/robot_parts/r_arm
 	name = "robot right arm"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "r_arm"
 	part = BP_R_ARM
+	bodypart_type = /obj/item/organ/external/r_arm/robot
 
 /obj/item/robot_parts/l_leg
 	name = "robot left leg"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "l_leg"
 	part = BP_L_LEG
+	bodypart_type = /obj/item/organ/external/l_leg/robot
 
 /obj/item/robot_parts/r_leg
 	name = "robot right leg"
 	desc = "A skeletal limb wrapped in pseudomuscles, with a low-conductivity case."
 	icon_state = "r_leg"
 	part = BP_R_LEG
+	bodypart_type = /obj/item/organ/external/r_leg/robot
 
 /obj/item/robot_parts/chest
 	name = "robot torso"
@@ -65,19 +70,19 @@
 	update_icon()
 
 /obj/item/robot_parts/robot_suit/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(l_arm)
-		overlays += "l_arm+o"
+		add_overlay("l_arm+o")
 	if(r_arm)
-		overlays += "r_arm+o"
+		add_overlay("r_arm+o")
 	if(chest)
-		overlays += "chest+o"
+		add_overlay("chest+o")
 	if(l_leg)
-		overlays += "l_leg+o"
+		add_overlay("l_leg+o")
 	if(r_leg)
-		overlays += "r_leg+o"
+		add_overlay("r_leg+o")
 	if(head)
-		overlays += "head+o"
+		add_overlay("head+o")
 
 /obj/item/robot_parts/robot_suit/proc/check_completion()
 	if(l_arm && r_arm)
@@ -115,7 +120,7 @@
 			r_leg = null
 			chest = null
 			head = null
-			overlays.Cut()
+			cut_overlays()
 			w_class = initial(w_class)
 		else
 			to_chat(user, "<span class='warning'>Nothing attached to robot frame!</span>")
@@ -355,12 +360,11 @@
 		return
 	return
 
-/obj/item/robot_parts/attackby(obj/item/W, mob/user)
-	if(istype(W,/obj/item/weapon/card/emag))
-		if(sabotaged)
-			to_chat(user, "<span class='warning'>[src] is already sabotaged!</span>")
-		else
-			to_chat(user, "<span class='warning'>You slide [W] into the dataport on [src] and short out the safeties.</span>")
-			sabotaged = 1
-		return
-	..()
+/obj/item/robot_parts/emag_act(mob/user)
+	if(sabotaged)
+		to_chat(user, "<span class='warning'>[src] is already sabotaged!</span>")
+		return FALSE
+	else
+		to_chat(user, "<span class='warning'>You slide card into the dataport on [src] and short out the safeties.</span>")
+		sabotaged = 1
+		return TRUE

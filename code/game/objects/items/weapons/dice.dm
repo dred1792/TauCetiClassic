@@ -48,7 +48,7 @@
 	for(var/mob/living/A in viewers(3, loc))
 		A.confused += SLIGHTLY_CONFUSED
 	loc.visible_message("<span class='warning'>You hear a loud pop, as [src] poofs out of existence.</span>")
-	playsound(loc, 'sound/effects/bubble_pop.ogg', 50, 1)
+	playsound(src, 'sound/effects/bubble_pop.ogg', VOL_EFFECTS_MASTER)
 	qdel(src)
 
 /obj/item/weapon/dice/atom_init()
@@ -179,10 +179,10 @@
 	if(result == 1)
 		poof()
 
-/obj/item/weapon/dice/ghost/d20/throw_at(mob/living/target, range, speed, mob/living/thrower)
+/obj/item/weapon/dice/ghost/d20/throw_at(mob/living/target, range, speed, mob/living/thrower, spin = TRUE, diagonals_first = FALSE, datum/callback/callback)
 	diceroll()
 	..()
-	if(result == 20)
+	if(result == 20 && istype(target) && istype(thrower))
 		if(thrower.a_intent == "help")
 			to_chat(target, "<span class='notice'>You suddenly feel sligly better because of [thrower]'s luck.</span>")
 			target.adjustBruteLoss(-1)

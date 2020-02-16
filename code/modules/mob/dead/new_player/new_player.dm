@@ -78,7 +78,7 @@ commented cause polls are kinda broken now, needs refactoring */
 	if(statpanel("Lobby"))
 		stat("Game Mode:", (ticker.hide_mode) ? "Secret" : "[master_mode]")
 
-		if(ticker.current_state == GAME_STATE_PREGAME)
+		if(world.is_round_preparing())
 			stat("Time To Start:", (ticker.timeLeft >= 0) ? "[round(ticker.timeLeft / 10)]s" : "DELAYED")
 
 			stat("Players:", "[ticker.totalPlayers]")
@@ -113,19 +113,22 @@ commented cause polls are kinda broken now, needs refactoring */
 		if(!(ckey in admin_datums) && jobban_isbanned(src, "Observer"))
 			to_chat(src, "<span class='red'>You have been banned from observing. Declare yourself.</span>")
 			return 0
+		if(!SSmapping.station_loaded)
+			to_chat(src, "<span class='red'>There is no station yet, please wait.</span>")
+			return 0
 		if(alert(src,"Are you sure you wish to observe? You will have to wait 30 minutes before being able to respawn!","Player Setup","Yes","No") == "Yes")
 			if(!client)
 				return 1
 			var/mob/dead/observer/observer = new()
 
 			spawning = 1
-			send_sound(src, null, 85, CHANNEL_LOBBY_MUSIC) // MAD JAMS cant last forever yo
+			playsound_stop(CHANNEL_MUSIC) // MAD JAMS cant last forever yo
 
 
 			observer.started_as_observer = 1
 			close_spawn_windows()
 			var/obj/O = locate("landmark*Observer-Start")
-			to_chat(src, "\blue Now teleporting.")
+			to_chat(src, "<span class='notice'>Now teleporting.</span>")
 			observer.loc = O.loc
 			observer.timeofdeath = world.time // Set the time of death so that the respawn timer works correctly.
 
@@ -148,7 +151,7 @@ commented cause polls are kinda broken now, needs refactoring */
 
 	if(href_list["late_join"])
 		if(!ticker || ticker.current_state != GAME_STATE_PLAYING)
-			to_chat(usr, "\red The round is either not ready, or has already finished...")
+			to_chat(usr, "<span class='warning'>The round is either not ready, or has already finished...</span>")
 			return
 
 		if(client.prefs.species != HUMAN)
@@ -164,7 +167,7 @@ commented cause polls are kinda broken now, needs refactoring */
 	if(href_list["SelectedJob"])
 
 		if(!enter_allowed)
-			to_chat(usr, "\blue There is an administrative lock on entering the game!")
+			to_chat(usr, "<span class='notice'>There is an administrative lock on entering the game!</span>")
 			return
 
 		if(client.prefs.species != HUMAN)
@@ -287,6 +290,8 @@ commented cause polls are kinda broken now, needs refactoring */
 		return FALSE
 	if(!job.is_species_permitted(client))
 		return FALSE
+	if(!job.map_check())
+		return FALSE
 	return TRUE
 
 
@@ -294,10 +299,10 @@ commented cause polls are kinda broken now, needs refactoring */
 	if (src != usr)
 		return 0
 	if(!ticker || ticker.current_state != GAME_STATE_PLAYING)
-		to_chat(usr, "\red The round is either not ready, or has already finished...")
+		to_chat(usr, "<span class='warning'>The round is either not ready, or has already finished...</span>")
 		return 0
 	if(!enter_allowed)
-		to_chat(usr, "\blue There is an administrative lock on entering the game!")
+		to_chat(usr, "<span class='notice'>There is an administrative lock on entering the game!</span>")
 		return 0
 	if(!IsJobAvailable(rank))
 		to_chat(src, alert("[rank] is not available. Please try another."))
@@ -502,7 +507,7 @@ commented cause polls are kinda broken now, needs refactoring */
 	else
 		client.prefs.copy_to(new_character)
 
-	send_sound(src, null, 85, CHANNEL_LOBBY_MUSIC) // MAD JAMS cant last forever yo
+	playsound_stop(CHANNEL_MUSIC) // MAD JAMS cant last forever yo
 
 	if(mind)
 		mind.active = 0					//we wish to transfer the key manually
@@ -567,5 +572,5 @@ commented cause polls are kinda broken now, needs refactoring */
 /mob/dead/new_player/hear_say(message, verb = "says", datum/language/language = null, alt_name = "",italics = 0, mob/speaker = null)
 	return
 
-/mob/dead/new_player/hear_radio(message, verb="says", datum/language/language=null, part_a, part_b, mob/speaker = null, hard_to_hear = 0)
+/mob/dead/new_player/hear_radio(message, verb="says", datum/language/language=null, part_a, part_b, part_c, mob/speaker = null, hard_to_hear = 0, vname ="")
 	return

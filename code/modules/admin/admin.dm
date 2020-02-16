@@ -4,19 +4,18 @@ var/global/BSACooldown = 0
 
 ////////////////////////////////
 proc/message_admins(msg, reg_flag = R_ADMIN)
+	log_adminwarn(msg) // todo: msg in html format, dublicates other logs; must be removed, use logs_*() where necessary (also, thanks you dear ZVE)
 	msg = "<span class=\"admin\"><span class=\"prefix\">ADMIN LOG:</span> <span class=\"message\">[msg]</span></span>"
-	log_adminwarn(msg)
 	for(var/client/C in admins)
 		if(C.holder.rights & reg_flag)
 			to_chat(C, msg)
 
-/proc/msg_admin_attack(text) //Toggleable Attack Messages
-	log_attack(text)
-	var/rendered = "<span class=\"admin\"><span class=\"prefix\">ATTACK:</span> <span class=\"message\">[text]</span></span>"
+/proc/msg_admin_attack(msg, mob/living/target) //Toggleable Attack Messages
+	log_attack(msg)
+	msg = "<span class=\"admin\"><span class=\"prefix\">ATTACK:</span> <span class=\"message\">[msg]</span></span> [ADMIN_PPJMPFLW(target)]"
 	for(var/client/C in admins)
 		if(R_ADMIN & C.holder.rights)
 			if(C.prefs.chat_toggles & CHAT_ATTACKLOGS)
-				var/msg = rendered
 				to_chat(C, msg)
 
 
@@ -188,10 +187,41 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	feedback_add_details("admin_verb","SPP") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 
-/datum/player_info/var/author // admin who authored the information
-/datum/player_info/var/rank //rank of admin who made the notes
-/datum/player_info/var/content // text content of the information
-/datum/player_info/var/timestamp // Because this is bloody annoying
+#define PLAYER_INFO_MISSING_CONTENT_TEXT    "Missing Data"
+#define PLAYER_INFO_MISSING_AUTHOR_TEXT     "N/A"
+#define PLAYER_INFO_MISSING_RANK_TEXT       "N/A"
+#define PLAYER_INFO_MISSING_TIMESTAMP_TEXT  "N/A"
+#define PLAYER_INFO_MISSING_JOB_TEXT        "N/A"
+
+/datum/player_info
+	var/author     // admin who authored the information
+	var/rank       // rank of admin who made the notes
+	var/content    // text content of the information
+	var/timestamp  // Because this is bloody annoying
+
+/datum/player_info/proc/get_days_timestamp()
+	if (!timestamp || timestamp == PLAYER_INFO_MISSING_TIMESTAMP_TEXT)
+		return 0
+	return parse_notes_date_timestamp(timestamp)
+
+/datum/player_info/proc/get_remove_index()
+	return 0
+
+/datum/player_info/indexed
+	var/remove_index
+
+/datum/player_info/indexed/get_remove_index()
+	return remove_index
+
+/datum/player_info/outside
+	author = PLAYER_INFO_MISSING_AUTHOR_TEXT
+	rank = PLAYER_INFO_MISSING_RANK_TEXT
+	content = PLAYER_INFO_MISSING_CONTENT_TEXT
+	timestamp = PLAYER_INFO_MISSING_TIMESTAMP_TEXT
+	var/days_timestamp = 0 // number of day after 1 Jan 2000
+
+/datum/player_info/outside/get_days_timestamp()
+	return isnum(days_timestamp) ? days_timestamp : 0
 
 #define PLAYER_NOTES_ENTRIES_PER_PAGE 50
 /datum/admins/proc/PlayerNotes()
@@ -209,7 +239,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	var/savefile/S=new("data/player_notes.sav")
 	var/list/note_keys
 	S >> note_keys
-	if(!note_keys)
+	if(!length(note_keys))
 		dat += "No notes found."
 	else
 		dat += "<table>"
@@ -242,27 +272,26 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 				dat += "</b>"
 
 	usr << browse(entity_ja(dat), "window=player_notes;size=400x400")
-
+#undef PLAYER_NOTES_ENTRIES_PER_PAGE
 
 /datum/admins/proc/player_has_info(key)
 	var/savefile/info = new("data/player_saves/[copytext(key, 1, 2)]/[key]/info.sav")
 	var/list/infos
 	info >> infos
-	if(!infos || !infos.len) return 0
-	else return 1
-
+	return (length(infos))
 
 /datum/admins/proc/show_player_info(key as text)
 	set category = "Admin"
 	set name = "Show Player Info"
-	if (!istype(src,/datum/admins))
+
+	// Check admin rights
+	if(!istype(src,/datum/admins))
 		src = usr.client.holder
-	if (!istype(src,/datum/admins))
+	if(!istype(src,/datum/admins))
 		to_chat(usr, "Error: you are not an admin!")
 		return
-	var/dat = "<html><head><title>Info on [key]</title></head>"
-	dat += "<body>"
 
+	key = ckey(key)
 	//Display player age and player warn bans
 	var/p_age
 	var/p_ingame_age
@@ -271,37 +300,177 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 			p_age = C.player_age
 			p_ingame_age = C.player_ingame_age
 
+	// Gather data
+	var/list/savefile_info = load_info_player_data(key)
+	var/list/db_info = load_info_player_data_db(key)
+	// Start render info page
+	var/dat = "<html><head><title>Info on [key]</title></head>"
+	dat += "<body>"
 	dat +="<span style='color:#000000; font-weight: bold'>Player age: [p_age] / In-game age: [p_ingame_age]</span><hr>"
 
-	var/savefile/info = new("data/player_saves/[copytext(key, 1, 2)]/[key]/info.sav")
-	var/list/infos
-	info >> infos
-	if(!infos)
+	if(!length(savefile_info) && !length(db_info))
 		dat += "No information found on the given key.<br>"
 	else
-		var/update_file = 0
-		var/i = 0
+		var/list/infos = generalized_players_info(savefile_info, db_info)
 		for(var/datum/player_info/I in infos)
-			i += 1
-			if(!I.timestamp)
-				I.timestamp = "Pre-4/3/2012"
-				update_file = 1
-			if(!I.rank)
-				I.rank = "N/A"
-				update_file = 1
 			dat += "<font color=#008800>[I.content]</font> <i>by [I.author] ([I.rank])</i> on <i><font color=blue>[I.timestamp]</i></font> "
-			if(I.author == usr.key || I.author == "Adminbot" || check_rights(R_PERMISSIONS, FALSE))
-				dat += "<A href='?src=\ref[src];remove_player_info=[key];remove_index=[i]'>Remove</A>"
+			if(I.get_remove_index() && (I.author == usr.key || I.author == "Adminbot" || check_rights(R_PERMISSIONS, FALSE)))
+				dat += "<A href='?src=\ref[src];remove_player_info=[key];remove_index=[I.get_remove_index()]'>Remove</A>"
 			dat += "<br><br>"
-		if(update_file)
-			info << infos
-
 	dat += "<br>"
 	dat += "<A href='?src=\ref[src];add_player_info=[key]'>Add Comment</A><br>"
-
 	dat += "</body></html>"
 	usr << browse(entity_ja(dat), "window=adminplayerinfo;size=480x480")
 
+/datum/admins/proc/generalized_players_info(list/file_notes, list/db_notes)
+	var/list/datum/player_info/merged = list()
+	var/index = 0
+	for(var/datum/player_info/P in file_notes)
+		var/datum/player_info/indexed/I = new()
+		index += 1
+		I.author = P.author
+		I.rank = P.rank
+		I.content = P.content
+		I.timestamp = P.timestamp
+		I.remove_index = index
+		merged += I
+	if(length(db_notes))
+		merged += db_notes
+	merged = sortMerge(merged, /proc/cmp_days_timestamp, FALSE)
+	return merged
+
+/proc/cmp_days_timestamp(datum/player_info/a, datum/player_info/b)
+	return a.get_days_timestamp() - b.get_days_timestamp()
+
+/datum/admins/proc/load_info_player_data(player_ckey)
+	if(!player_ckey)
+		return
+	var/savefile/info_file = new("data/player_saves/[copytext(player_ckey, 1, 2)]/[player_ckey]/info.sav")
+	var/list/data
+	info_file >> data
+	if(!length(data))
+		return
+	var/missing_fixed = FALSE
+	for(var/datum/player_info/I in data)
+		if(!I.timestamp)
+			I.timestamp = PLAYER_INFO_MISSING_TIMESTAMP_TEXT
+			missing_fixed = TRUE
+		if(!I.rank)
+			I.rank = PLAYER_INFO_MISSING_RANK_TEXT
+			missing_fixed = TRUE
+	if(missing_fixed)
+		info_file << data
+	return data
+
+/datum/admins/proc/load_info_player_data_db(player_ckey)
+	// Get player ckey and generate list of players_notes
+	// Return null if errors
+	var/list/db_player_notes = list()
+	if(!player_ckey || config.ban_legacy_system || !config.sql_enabled)
+		return
+	if(!establish_db_connection())
+		usr.show_message("Notes [player_ckey] from DB don't available.")
+		return
+	var/timestamp_format = "%a, %M %D of %Y"
+	var/days_ago_start_date = "1999-12-31"
+	var/list/sql_fields = list(
+		"a_ckey",
+		"bantype",
+		"reason",
+		"DATE_FORMAT(bantime, '[timestamp_format]')",
+		"ip",
+		"computerid",
+		"duration",
+		"job",
+		"DATEDIFF(bantime, '[days_ago_start_date]')",
+		"unbanned",
+		"DATE_FORMAT(unbanned_datetime, '[timestamp_format]')",
+		"DATEDIFF(unbanned_datetime, '[days_ago_start_date]')",
+		"unbanned_ckey",
+		"rounds"
+	 )
+	var/DBQuery/query = dbcon.NewQuery("SELECT " + sql_fields.Join(", ") + " FROM erro_ban WHERE (ckey = '[player_ckey]') ORDER BY id LIMIT 100")
+	if(!query.Execute())
+		return
+	while(query.NextRow())
+		var/datum/player_info/outside/notes_record = new()
+		var/datum/player_info/outside/unban_notes_record
+		var/list/ip_cid = list()
+		var/a_ckey = query.item[1]
+		var/bantype = query.item[2]
+		var/reason = query.item[3]
+		var/timestamp = query.item[4]
+		if(query.item[5])
+			ip_cid += query.item[5]
+		if(query.item[6])
+			ip_cid += query.item[6]
+		var/duration = text2num(query.item[7])
+		var/job = query.item[8] ? query.item[8] : PLAYER_INFO_MISSING_JOB_TEXT
+		var/days_ago = text2num(query.item[9])
+		var/is_unbanned = query.item[10] ? TRUE : FALSE
+		var/unbanned_timestamp = query.item[11]
+		var/unbanned_days_ago = text2num(query.item[12])
+		var/unbanned_a_ckey = query.item[13]
+		var/rounds_ban_counter = text2num(query.item[14])  // legacy field, but it can be in DB now
+
+		// -1 = perma, duration in minutes come
+		if(!duration)
+			duration = "N/A"
+		else if(duration < 0)
+			duration = "infinity"
+		else
+			duration = DisplayTimeText((duration MINUTE), 1)
+
+		// Ban Record creating
+		if(length(a_ckey))
+			notes_record.author = a_ckey
+		if(rounds_ban_counter)
+			duration += " and [rounds_ban_counter] rounds"
+		var/description = "([ip_cid.Join(", ")]): [reason]"
+		switch(bantype)
+			if (BANTYPE_JOB_PERMA_STR)
+				// notes_record.content = "Permanent JOB BAN [job] [description]"
+				// already in notes by Adminbot
+				continue
+			if (BANTYPE_JOB_TEMP_STR)
+				// notes_record.content = "Temporal JOB BAN [job] for [duration] [description]"
+				continue
+			if (BANTYPE_PERMA_STR)
+				notes_record.content = "Permanent BAN [description]"
+			if (BANTYPE_TEMP_STR)
+				notes_record.content = "Temporal BAN for [duration] [description]"
+		if(length(timestamp))
+			notes_record.timestamp = timestamp
+		if(days_ago)
+			notes_record.days_timestamp = days_ago
+		db_player_notes += notes_record
+
+		// Unban record creating
+		if(is_unbanned)
+			unban_notes_record = new()
+			if(length(unbanned_a_ckey))
+				unban_notes_record.author =  unbanned_a_ckey
+			switch(bantype)
+				if(BANTYPE_JOB_PERMA_STR)
+					unban_notes_record.content = "Unban. Permanent JOB BAN [job] was [timestamp]"
+				if(BANTYPE_JOB_TEMP_STR)
+					unban_notes_record.content = "Unban. Temporal JOB BAN [job] was [timestamp]"
+				if(BANTYPE_PERMA_STR)
+					unban_notes_record.content = "Unban. Permanent BAN was [timestamp]"
+				if(BANTYPE_TEMP_STR)
+					unban_notes_record.content = "Unban. Temporal BAN was [timestamp]"
+			if(length(unbanned_timestamp))
+				unban_notes_record.timestamp = unbanned_timestamp
+			if(unbanned_days_ago)
+				unban_notes_record.days_timestamp = unbanned_days_ago
+			db_player_notes += unban_notes_record
+	return db_player_notes
+
+#undef PLAYER_INFO_MISSING_CONTENT_TEXT
+#undef PLAYER_INFO_MISSING_AUTHOR_TEXT
+#undef PLAYER_INFO_MISSING_RANK_TEXT
+#undef PLAYER_INFO_MISSING_TIMESTAMP_TEXT
+#undef PLAYER_INFO_MISSING_JOB_TEXT
 
 
 /datum/admins/proc/access_news_network() //MARKER
@@ -351,7 +520,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 					if(CHANNEL.is_admin_channel)
 						dat+="<B><FONT style='BACKGROUND-COLOR: LightGreen'><A href='?src=\ref[src];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A></FONT></B><BR>"
 					else
-						dat+="<B><A href='?src=\ref[src];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR></B>"
+						dat+="<B><A href='?src=\ref[src];ac_show_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : null]<BR></B>"
 			dat+={"<BR><HR><A href='?src=\ref[src];ac_refresh=1'>Refresh</A>
 				<BR><A href='?src=\ref[src];ac_setScreen=[0]'>Back</A>
 			"}
@@ -385,21 +554,21 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 		if(6)
 			dat+="<B><FONT COLOR='maroon'>ERROR: Could not submit Feed story to Network.</B></FONT><HR><BR>"
 			if(src.admincaster_feed_channel.channel_name=="")
-				dat+="<FONT COLOR='maroon'>ï¿½Invalid receiving channel name.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Invalid receiving channel name.</FONT><BR>"
 			if(src.admincaster_feed_message.body == "" || src.admincaster_feed_message.body == "\[REDACTED\]")
-				dat+="<FONT COLOR='maroon'>ï¿½Invalid message body.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Invalid message body.</FONT><BR>"
 			dat+="<BR><A href='?src=\ref[src];ac_setScreen=[3]'>Return</A><BR>"
 		if(7)
 			dat+="<B><FONT COLOR='maroon'>ERROR: Could not submit Feed Channel to Network.</B></FONT><HR><BR>"
 			if(src.admincaster_feed_channel.channel_name =="" || src.admincaster_feed_channel.channel_name == "\[REDACTED\]")
-				dat+="<FONT COLOR='maroon'>ï¿½Invalid channel name.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Invalid channel name.</FONT><BR>"
 			var/check = 0
 			for(var/datum/feed_channel/FC in news_network.network_channels)
 				if(FC.channel_name == src.admincaster_feed_channel.channel_name)
 					check = 1
 					break
 			if(check)
-				dat+="<FONT COLOR='maroon'>ï¿½Channel name already in use.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Channel name already in use.</FONT><BR>"
 			dat+="<BR><A href='?src=\ref[src];ac_setScreen=[2]'>Return</A><BR>"
 		if(9)
 			dat+="<B>[src.admincaster_feed_channel.channel_name]: </B><FONT SIZE=1>\[created by: <FONT COLOR='maroon'>[src.admincaster_feed_channel.author]</FONT>\]</FONT><HR>"
@@ -435,7 +604,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 				dat+="<I>No feed channels found active...</I><BR>"
 			else
 				for(var/datum/feed_channel/CHANNEL in news_network.network_channels)
-					dat+="<A href='?src=\ref[src];ac_pick_censor_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR>"
+					dat+="<A href='?src=\ref[src];ac_pick_censor_channel=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : null]<BR>"
 			dat+="<BR><A href='?src=\ref[src];ac_setScreen=[0]'>Cancel</A>"
 		if(11)
 			dat+={"
@@ -448,7 +617,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 				dat+="<I>No feed channels found active...</I><BR>"
 			else
 				for(var/datum/feed_channel/CHANNEL in news_network.network_channels)
-					dat+="<A href='?src=\ref[src];ac_pick_d_notice=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : ()]<BR>"
+					dat+="<A href='?src=\ref[src];ac_pick_d_notice=\ref[CHANNEL]'>[CHANNEL.channel_name]</A> [(CHANNEL.censored) ? ("<FONT COLOR='red'>***</FONT>") : null]<BR>"
 
 			dat+="<BR><A href='?src=\ref[src];ac_setScreen=[0]'>Back</A>"
 		if(12)
@@ -513,9 +682,9 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 		if(16)
 			dat+="<B><FONT COLOR='maroon'>ERROR: Wanted Issue rejected by Network.</B></FONT><HR><BR>"
 			if(src.admincaster_feed_message.author =="" || src.admincaster_feed_message.author == "\[REDACTED\]")
-				dat+="<FONT COLOR='maroon'>ï¿½Invalid name for person wanted.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Invalid name for person wanted.</FONT><BR>"
 			if(src.admincaster_feed_message.body == "" || src.admincaster_feed_message.body == "\[REDACTED\]")
-				dat+="<FONT COLOR='maroon'>ï¿½Invalid description.</FONT><BR>"
+				dat+="<FONT COLOR='maroon'>˜Invalid description.</FONT><BR>"
 			dat+="<BR><A href='?src=\ref[src];ac_setScreen=[0]'>Return</A><BR>"
 		if(17)
 			dat+={"
@@ -592,9 +761,18 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 			<A href='?src=\ref[src];secretsadmin=showgm'>Show Game Mode</A><BR>
 			<A href='?src=\ref[src];secretsadmin=manifest'>Show Crew Manifest</A><BR>
 			<A href='?src=\ref[src];secretsadmin=DNA'>List DNA (Blood)</A><BR>
-			<A href='?src=\ref[src];secretsadmin=fingerprints'>List Fingerprints</A><BR><BR>
+			<A href='?src=\ref[src];secretsadmin=fingerprints'>List Fingerprints</A><BR>
+			<A href='?src=\ref[src];secretsadmin=night_shift_set'>Set Night Shift Mode</A><BR>
+			<BR>
 			<BR>
 			"}
+
+	if(check_rights(R_VAREDIT, 0))
+		dat += {"
+			<B>Secrets that only people with varedit have access to</B><BR><BR>
+			<A href='?src=\ref[src];secretsadmin=mass_sleep'>Put everyone to sleep.</A><BR>
+			<BR><BR>
+		"}
 
 	if(check_rights(R_FUN,0))
 		dat += {"
@@ -694,11 +872,11 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	set desc="Restarts the world"
 	if (!usr.client.holder)
 		return
-	var/confirm = alert("Restart the game world?", "Restart", "Yes", "Cancel")
+	var/confirm = alert("Restart the game world? Warning: game stats will be lost if round not ended.", "Restart", "Yes", "Cancel")
 	if(confirm == "Cancel")
 		return
 	if(confirm == "Yes")
-		to_chat(world, "\red <b>Restarting world!</b> \blue Initiated by [usr.client.holder.fakekey ? "Admin" : usr.key]!")
+		to_chat(world, "<span class='warning'><b>Restarting world!</b> <span class='notice'>Initiated by [usr.client.holder.fakekey ? "Admin" : usr.key]!</span></span>")
 		log_admin("[key_name(usr)] initiated a reboot.")
 
 		feedback_set_details("end_error","admin reboot - by [usr.key] [usr.client.holder.fakekey ? "(stealth)" : ""]")
@@ -718,7 +896,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	if(!check_rights(0))
 		return
 
-	var/message = sanitize(input("Global message to send:", "Admin Announce", null, null)  as message, 500, extra = 0)
+	var/message = sanitize(input("Global message to send:", "Admin Announce", null, null)  as message, MAX_PAPER_MESSAGE_LEN, extra = 0)
 
 	if(message)
 		to_chat(world, "<span class='admin_announce'><b>[usr.client.holder.fakekey ? "Administrator" : usr.key] Announces:</b>\n <span class='italic emojify linkify'>[message]</span></span>")
@@ -793,8 +971,8 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 		return 0
 
 	if(ticker.start_now())
-		log_admin("[usr.key] has started the game.")
-		message_admins("<font color='blue'>[usr.key] has started the game.</font>")
+		log_admin("[key_name(usr)] has started the game.")
+		message_admins("<font color='blue'>[key_name_admin(usr)] has started the game.</font>")
 		feedback_add_details("admin_verb","SN") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 		return 1
 	else
@@ -812,7 +990,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	else
 		to_chat(world, "<B>New players may now enter the game.</B>")
 	log_admin("[key_name(usr)] toggled new player game entering.")
-	message_admins("\blue [key_name_admin(usr)] toggled new player game entering.")
+	message_admins("<span class='notice'>[key_name_admin(usr)] toggled new player game entering.</span>")
 	world.update_status()
 	feedback_add_details("admin_verb","TE") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
@@ -838,7 +1016,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 		to_chat(world, "<B>You may now respawn.</B>")
 	else
 		to_chat(world, "<B>You may no longer respawn :(</B>")
-	message_admins("\blue [key_name_admin(usr)] toggled respawn to [abandon_allowed ? "On" : "Off"].")
+	message_admins("[key_name_admin(usr)] toggled respawn to [abandon_allowed ? "On" : "Off"].")
 	log_admin("[key_name(usr)] toggled respawn to [abandon_allowed ? "On" : "Off"].")
 	world.update_status()
 	feedback_add_details("admin_verb","TR") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
@@ -860,6 +1038,29 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	log_admin("[key_name(usr)] toggled Space Ninjas to [toggle_space_ninja].")
 	message_admins("[key_name_admin(usr)] toggled Space Ninjas [toggle_space_ninja ? "on" : "off"].")
 	feedback_add_details("admin_verb","TSN") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+/datum/admins/proc/change_FH_control_type()
+	set category = "Server"
+	set desc="Change facehuggers control type"
+	set name="Change FH control type"
+	var/FH_control_type = input("Choose a control type of facehuggers.","FH control type") as null|anything in list("Static AI(default)", "Dynamic AI", "Playable(+SAI)")
+	feedback_add_details("admin_verb","CFHAI") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+	switch(FH_control_type)
+		if("Static AI(default)")
+			facehuggers_control_type = FACEHUGGERS_STATIC_AI
+			for(var/obj/item/clothing/mask/facehugger/FH in facehuggers_list)
+				STOP_PROCESSING(SSobj, FH)
+		if("Dynamic AI")
+			facehuggers_control_type = FACEHUGGERS_DYNAMIC_AI
+			for(var/obj/item/clothing/mask/facehugger/FH in facehuggers_list)
+				START_PROCESSING(SSobj, FH)
+		if("Playable(+SAI)")
+			facehuggers_control_type = FACEHUGGERS_PLAYABLE
+			for(var/obj/item/clothing/mask/facehugger/FH in facehuggers_list)
+				STOP_PROCESSING(SSobj, FH)
+	if(FH_control_type)
+		to_chat(observer_list, "<B>Facehuggers' control type was changed. Now you can [(facehuggers_control_type == FACEHUGGERS_PLAYABLE) ? "" : "no longer"] control the facehugger</B>")
+		message_admins("<span class='adminnotice'>[key_name_admin(usr)] changed facehuggers' control type to: [FH_control_type].</span>")
 
 /datum/admins/proc/delay()
 	set category = "Server"
@@ -913,7 +1114,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	set desc="Toggle admin jumping"
 	set name="Toggle Jump"
 	config.allow_admin_jump = !(config.allow_admin_jump)
-	message_admins("\blue Toggled admin jumping to [config.allow_admin_jump].")
+	message_admins("<span class='notice'>Toggled admin jumping to [config.allow_admin_jump].</span>")
 	feedback_add_details("admin_verb","TJ") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/adspawn()
@@ -921,7 +1122,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	set desc="Toggle admin spawning"
 	set name="Toggle Spawn"
 	config.allow_admin_spawning = !(config.allow_admin_spawning)
-	message_admins("\blue Toggled admin item spawning to [config.allow_admin_spawning].")
+	message_admins("<span class='notice'>Toggled admin item spawning to [config.allow_admin_spawning].</span>")
 	feedback_add_details("admin_verb","TAS") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/adrev()
@@ -929,7 +1130,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	set desc="Toggle admin revives"
 	set name="Toggle Revive"
 	config.allow_admin_rev = !(config.allow_admin_rev)
-	message_admins("\blue Toggled reviving to [config.allow_admin_rev].")
+	message_admins("<span class='notice'>Toggled reviving to [config.allow_admin_rev].</span>")
 	feedback_add_details("admin_verb","TAR") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/immreboot()
@@ -939,7 +1140,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	if(!usr.client.holder)	return
 	if( alert("Reboot server?",,"Yes","No") == "No")
 		return
-	to_chat(world, "\red <b>Rebooting world!</b> \blue Initiated by [usr.client.holder.fakekey ? "Admin" : usr.key]!")
+	to_chat(world, "<span class='warning'><b>Rebooting world!</b> <span class='notice'>Initiated by [usr.client.holder.fakekey ? "Admin" : usr.key]!</span></span>")
 	log_admin("[key_name(usr)] initiated an immediate reboot.")
 
 	feedback_set_details("end_error","immediate admin reboot - by [usr.key] [usr.client.holder.fakekey ? "(stealth)" : ""]")
@@ -965,7 +1166,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 /datum/admins/proc/unprison(mob/M in mob_list)
 	set category = "Admin"
 	set name = "Unprison"
-	if (M.z == ZLEVEL_CENTCOMM)
+	if (is_centcom_level(M.z))
 		if (config.allow_admin_jump)
 			M.loc = pick(latejoin)
 			message_admins("[key_name_admin(usr)] has unprisoned [key_name_admin(M)]")
@@ -1114,7 +1315,7 @@ proc/message_admins(msg, reg_flag = R_ADMIN)
 	else
 		to_chat(world, "<B>Guests may now enter the game.</B>")
 	log_admin("[key_name(usr)] toggled guests game entering [guests_allowed?"":"dis"]allowed.")
-	message_admins("\blue [key_name_admin(usr)] toggled guests game entering [guests_allowed?"":"dis"]allowed.")
+	message_admins("[key_name_admin(usr)] toggled guests game entering [guests_allowed?"":"dis"]allowed.")
 	feedback_add_details("admin_verb","TGU") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /datum/admins/proc/output_ai_laws()
@@ -1232,7 +1433,7 @@ var/admin_shuttle_location = 0 // 0 = centcom 13, 1 = station
 		toArea = locate(/area/shuttle/administration/centcom)
 
 		SSshuttle.undock_act(fromArea)
-		SSshuttle.undock_act(/area/hallway/secondary/entry, "arrival_admin")
+		SSshuttle.undock_act(/area/station/hallway/secondary/entry, "arrival_admin")
 	else
 		fromArea = locate(/area/shuttle/administration/centcom)
 		toArea = locate(/area/shuttle/administration/station)
@@ -1251,7 +1452,7 @@ var/admin_shuttle_location = 0 // 0 = centcom 13, 1 = station
 		admin_shuttle_location = 1
 
 		SSshuttle.dock_act(toArea)
-		SSshuttle.dock_act(/area/hallway/secondary/entry, "arrival_admin")
+		SSshuttle.dock_act(/area/station/hallway/secondary/entry, "arrival_admin")
 
 	moving = FALSE
 
@@ -1273,7 +1474,7 @@ var/ferry_location = 0 // 0 = centcom , 1 = station
 		toArea = locate(/area/shuttle/transport1/centcom)
 
 		SSshuttle.undock_act(fromArea)
-		SSshuttle.undock_act(/area/hallway/secondary/entry, "arrival_ferry")
+		SSshuttle.undock_act(/area/station/hallway/secondary/entry, "arrival_ferry")
 	else
 		fromArea = locate(/area/shuttle/transport1/centcom)
 		toArea = locate(/area/shuttle/transport1/station)
@@ -1292,7 +1493,7 @@ var/ferry_location = 0 // 0 = centcom , 1 = station
 		ferry_location = 1
 
 		SSshuttle.dock_act(toArea)
-		SSshuttle.dock_act(/area/hallway/secondary/entry, "arrival_ferry")
+		SSshuttle.dock_act(/area/station/hallway/secondary/entry, "arrival_ferry")
 
 	moving = FALSE
 

@@ -2,7 +2,7 @@
 // GLOBAL MACRO HELPERS
 // ===================================
 
-// A = thing to stop | B = thing to hit. | finialize() calls A.throw_impact(B)
+// A = thing to stop | B = thing to hit. | finialize() calls A.throw_impact(B, throwingdatum)
 #define STOP_THROWING(A, B) if(A.throwing) {var/datum/thrownthing/TT = SSthrowing.processing[A]; if(TT) {TT.finialize(null, B);}}
 
 // ===================================
@@ -421,7 +421,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 	ADD_TO_MOBLIST(/mob/living/silicon/robot)
 	ADD_TO_MOBLIST(/mob/living/carbon/human)
 	ADD_TO_MOBLIST(/mob/living/carbon/brain)
-	ADD_TO_MOBLIST(/mob/living/carbon/alien)
+	ADD_TO_MOBLIST(/mob/living/carbon/xenomorph)
 	ADD_TO_MOBLIST(/mob/dead)
 	ADD_TO_MOBLIST(/mob/living/parasite/essence)
 	ADD_TO_MOBLIST(/mob/living/carbon/monkey)
@@ -461,15 +461,18 @@ Turf and target are seperate in case you want to teleport some distance from a t
 	if(istype(whom, /client))
 		C = whom
 		M = C.mob
-		key = C.key
+		key = C.ckey
 	else if(ismob(whom))
 		M = whom
 		C = M.client
-		key = M.key
-	else if(istype(whom, /datum))
-		var/datum/D = whom
-		return "*invalid:[D.type]*"
+		key = M.ckey
+	else if(istype(whom, /datum/mind))
+		var/datum/mind/mind = whom
+		M = mind.current
+		C = M ? M.client : null
+		key = ckey(mind.key)
 	else
+		//trace
 		return "*invalid*"
 
 	. = ""
@@ -507,6 +510,7 @@ Turf and target are seperate in case you want to teleport some distance from a t
 
 	return .
 
+// don't use for logs because include_link=1, use key_name
 /proc/key_name_admin(whom, include_name = 1)
 	return key_name(whom, 1, include_name)
 
@@ -573,9 +577,11 @@ Turf and target are seperate in case you want to teleport some distance from a t
 /proc/between(low, middle, high)
 	return max(min(middle, high), low)
 
+#if DM_VERSION < 513
 /proc/arctan(x)
 	var/y=arcsin(x/sqrt(1+x*x))
 	return y
+#endif
 
 //returns random gauss number
 /proc/GaussRand(sigma)
@@ -1137,69 +1143,6 @@ var/global/list/common_tools = list(
 		return 1
 	return 0
 
-/proc/is_hot(obj/item/W)
-	if(iswelder(W))
-		var/obj/item/weapon/weldingtool/WT = W
-		if(WT.isOn())
-			return 3800
-		else
-			return 0
-	if(istype(W,/obj/item/weapon/lighter))
-		var/obj/item/weapon/lighter/LT = W
-		if(LT.lit)
-			return 1500
-		else
-			return 0
-	if(istype(W,/obj/item/weapon/match))
-		var/obj/item/weapon/match/MT = W
-		if(MT.lit)
-			return 1000
-		else
-			return 0
-	if(istype(W,/obj/item/clothing/mask/cigarette))
-		var/obj/item/clothing/mask/cigarette/CG = W
-		if(CG.lit)
-			return 1000
-		else
-			return 0
-	if(istype(W,/obj/item/weapon/pickaxe/plasmacutter))
-		return 3800
-	if(istype(W,/obj/item/candle))
-		var/obj/item/candle/CD = W
-		if(CD.lit)
-			return 1000
-		else
-			return 0
-	if(istype(W,/obj/item/device/flashlight/flare/torch))
-		var/obj/item/device/flashlight/flare/torch/TCH = W
-		if(TCH.on)
-			return 1500
-		else
-			return 0
-	if(istype(W,/obj/item/weapon/melee/energy))
-		return 3500
-	else
-		return 0
-	return 0
-
-// Whether or not the given item counts as sharp in terms of dealing damage
-/proc/is_sharp(obj/O)
-	if(!O)
-		return 0
-	if(O.sharp)
-		return 1
-	if(O.edge)
-		return 1
-	return 0
-
-// Whether or not the given item counts as cutting with an edge in terms of removing limbs
-/proc/has_edge(obj/O)
-	if(!O)
-		return 0
-	if(O.edge)
-		return 1
-	return 0
-
 // For items that can puncture e.g. thick plastic but aren't necessarily sharp
 // Returns 1 if the given item is capable of popping things like balloons, inflatable barriers, or cutting police tape.
 /obj/item/proc/can_puncture()
@@ -1240,11 +1183,11 @@ var/global/list/common_tools = list(
 /proc/can_operate(mob/living/carbon/M)
 	return (locate(/obj/machinery/optable, M.loc) && M.resting) || \
 	(locate(/obj/structure/stool/bed/roller/roller_surg, M.loc) && 	\
-	(M.buckled || M.lying || M.weakened || M.stunned || M.paralysis || M.sleeping || M.stat)) && prob(95) || 	\
+	(M.buckled || M.lying || M.weakened || M.stunned || M.paralysis || M.stat)) && prob(95) || 	\
 	(locate(/obj/structure/stool/bed/roller, M.loc) && 	\
-	(M.buckled || M.lying || M.weakened || M.stunned || M.paralysis || M.sleeping || M.stat)) && prob(75) || 	\
+	(M.buckled || M.lying || M.weakened || M.stunned || M.paralysis || M.stat)) && prob(75) || 	\
 	(locate(/obj/structure/table, M.loc) && 	\
-	(M.lying || M.weakened || M.stunned || M.paralysis || M.sleeping || M.stat) && prob(66))
+	(M.lying || M.weakened || M.stunned || M.paralysis || M.stat) && prob(66))
 
 /proc/reverse_direction(dir)
 	switch(dir)
@@ -1305,9 +1248,6 @@ var/list/WALLITEMS = typecacheof(list(
 				return 1
 	return 0
 
-/proc/format_text(text)
-	return replacetext(replacetext(text,"\proper ",""),"\improper ","")
-
 /proc/params2turf(scr_loc, turf/origin)
 	if(!scr_loc)
 		return null
@@ -1317,8 +1257,8 @@ var/list/WALLITEMS = typecacheof(list(
 	tY = tY[1]
 	tX = splittext(tX[1], ":")
 	tX = tX[1]
-	tX = Clamp(origin.x + text2num(tX) - world.view - 1, 1, world.maxx)
-	tY = Clamp(origin.y + text2num(tY) - world.view - 1, 1, world.maxy)
+	tX = CLAMP(origin.x + text2num(tX) - world.view - 1, 1, world.maxx)
+	tY = CLAMP(origin.y + text2num(tY) - world.view - 1, 1, world.maxy)
 	return locate(tX, tY, tZ)
 
 /proc/screen_loc2turf(text, turf/origin)
@@ -1330,8 +1270,8 @@ var/list/WALLITEMS = typecacheof(list(
 	tX = splittext(tZ[2], "-")
 	tX = text2num(tX[2])
 	tZ = origin.z
-	tX = Clamp(origin.x + 7 - tX, 1, world.maxx)
-	tY = Clamp(origin.y + 7 - tY, 1, world.maxy)
+	tX = CLAMP(origin.x + 7 - tX, 1, world.maxx)
+	tY = CLAMP(origin.y + 7 - tY, 1, world.maxy)
 	return locate(tX, tY, tZ)
 
 /proc/iscatwalk(atom/A)

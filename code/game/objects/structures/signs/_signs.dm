@@ -19,7 +19,7 @@
 		user.visible_message("<span class='notice'>[user] starts removing [src]...</span>",
 							 "<span class='notice'>You start unfastening [src].</span>")
 		if(W.use_tool(src, user, 40, volume = 50))
-			playsound(loc, 'sound/items/deconstruct.ogg', 50, 1)
+			playsound(src, 'sound/items/deconstruct.ogg', VOL_EFFECTS_MASTER)
 			user.visible_message("<span class='notice'>[user] unfastens [src].</span>",
 								 "<span class='notice'>You unfasten [src].</span>")
 			var/obj/item/sign_backing/SB = new (get_turf(user))
@@ -73,7 +73,7 @@
 		//It's import to clone the pixel layout information
 		//Otherwise signs revert to being on the turf and
 		//move jarringly
-		playsound(src.loc, 'sound/effects/spray2.ogg', 50, 1)
+		playsound(src, 'sound/effects/spray2.ogg', VOL_EFFECTS_MASTER)
 		var/obj/structure/sign/newsign = new sign_type(get_turf(src))
 		newsign.pixel_x = pixel_x
 		newsign.pixel_y = pixel_y
@@ -82,10 +82,10 @@
 	else
 		switch(W.damtype)
 			if("fire")
-				playsound(loc, 'sound/items/welder.ogg', 80, 1)
+				playsound(src, 'sound/items/welder.ogg', VOL_EFFECTS_MASTER)
 				src.health -= W.force * 1
 			if("brute")
-				playsound(loc, 'sound/weapons/slash.ogg', 80, 1)
+				playsound(src, 'sound/weapons/slash.ogg', VOL_EFFECTS_MASTER)
 				src.health -= W.force * 0.75
 			else
 		if (src.health <= 0)
@@ -107,7 +107,7 @@
 		var/turf/T = target
 		user.visible_message("<span class='notice'>[user] fastens [src] to [T].</span>",
 							 "<span class='notice'>You attach the sign to [T].</span>")
-		playsound(T, 'sound/items/deconstruct.ogg', 50, 1)
+		playsound(T, 'sound/items/deconstruct.ogg', VOL_EFFECTS_MASTER)
 		new sign_path(T)
 		qdel(src)
 	else
@@ -115,19 +115,20 @@
 
 /obj/item/sign_backing/attackby(obj/item/weapon/W, mob/user)
 	if (iswelder(W))
-		playsound(loc, 'sound/items/welder.ogg', 50, 1)
-		new /obj/item/stack/sheet/mineral/plastic(user.loc, 2)
-		qdel(src)
+		if(W.use(0, user))
+			if(W.use_tool(src, user, 20, volume = 50))
+				new /obj/item/stack/sheet/mineral/plastic(user.loc, 2)
+				qdel(src)
 
 /obj/structure/sign/nanotrasen
-	name = "\improper Nanotrasen Logo"
+	name = "Nanotrasen Logo"
 	desc = "A sign with the Nanotrasen Logo on it. Glory to Nanotrasen!"
 	icon_state = "nanotrasen"
 
 /obj/structure/sign/mark
 	layer = TURF_LAYER
 	icon = 'icons/misc/mark.dmi'
-	name = "\improper Symbol"
+	name = "Symbol"
 	desc = "You look at a symbol."
 	icon_state = "b1"
 
@@ -136,7 +137,7 @@
 	icon_state = "C"
 
 /obj/structure/sign/chinese
-	name = "\improper chinese restaurant sign"
+	name = "chinese restaurant sign"
 	desc = "A glowing dragon invites you in."
 	icon_state = "chinese"
 	light_color = "#d00023"
@@ -144,11 +145,11 @@
 	light_range = 3
 
 /obj/structure/sign/barber
-	name = "\improper barbershop sign"
+	name = "barbershop sign"
 	desc = "A glowing red-blue-white stripe you won't mistake for any other!"
 	icon_state = "barber"
 
 /obj/structure/sign/monkey_painting
-	name = "\improper Mr. Deempisi portrait"
+	name = "Mr. Deempisi portrait"
 	desc = "Under the painting a plaque reads: 'While the meat grinder may not have spared you, fear not. Not one part of you has gone to waste... You were delicious.'"
 	icon_state = "monkey_painting"

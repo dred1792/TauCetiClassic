@@ -1,3 +1,6 @@
+#define PNEUMATIC_SPEED_CAP 40
+#define PNEUMATIC_SPEED_DIVISOR 800
+
 /obj/item/weapon/storage/pneumatic
 	name = "pneumatic cannon"
 	desc = "A large gas-powered cannon."
@@ -17,13 +20,10 @@
 	var/minimum_tank_pressure = 10                      // Minimum pressure to fire the gun.
 	var/cooldown = 0                                    // Whether or not we're cooling down.
 	var/cooldown_time = 50                              // Time between shots.
-	var/force_divisor = 400                             // Force equates to speed. Speed/5 equates to a damage multiplier for whoever you hit.
-	                                                    // For reference, a fully pressurized oxy tank at 50% gas release firing a health
-	                                                    // analyzer with a force_divisor of 10 hit with a damage multiplier of 3000+.
+
 /obj/item/weapon/storage/pneumatic/atom_init()
 	. = ..()
-	tank_container = new(src)
-	tank_container.tag = "gas_tank_holder"
+	tank_container = new()
 
 /obj/item/weapon/storage/pneumatic/verb/set_pressure() //set amount of tank pressure.
 
@@ -90,7 +90,7 @@
 /obj/item/weapon/storage/pneumatic/attack(mob/living/M, mob/living/user, def_zone)
 	if (length(contents) > 0)
 		if(user.a_intent == "hurt")
-			user.visible_message("\red <b> \The [user] fires \the [src] point blank at [M]!</b>")
+			user.visible_message("<span class='warning'><b> \The [user] fires \the [src] point blank at [M]!</b></span>")
 			Fire(M,user)
 			return
 		else
@@ -126,10 +126,9 @@
 		return 0
 
 	var/obj/item/object = contents[1]
-	var/speed = ((fire_pressure*tank.volume)/object.w_class)/force_divisor //projectile speed.
-	if(speed>80) speed = 80 //damage cap.
+	var/speed = min(PNEUMATIC_SPEED_CAP, ((fire_pressure*tank.volume)/object.w_class)/PNEUMATIC_SPEED_DIVISOR) //projectile speed.
 
-	playsound(src, 'sound/weapons/guns/gunshot_pneumaticgun.ogg', 100, 1, -2)
+	playsound(src, 'sound/weapons/guns/gunshot_pneumaticgun.ogg', VOL_EFFECTS_MASTER, null, null, -2)
 	user.visible_message("<span class='danger'>[user] fires [src] and launches [object] at [target]!</span>","<span class='danger'>You fire [src] and launch [object] at [target]!</span>")
 
 	src.remove_from_storage(object,user.loc)
@@ -143,6 +142,11 @@
 	spawn(cooldown_time)
 		cooldown = 0
 		to_chat(user, "[src]'s gauge informs you it's ready to be fired again.")
+
+/obj/item/weapon/storage/pneumatic/Destroy()
+	QDEL_NULL(tank)
+	QDEL_NULL(tank_container)
+	return ..()
 
 //Constructable pneumatic cannon.
 
@@ -176,7 +180,7 @@
 		if(buildstate == 0)
 			user.drop_item()
 			qdel(W)
-			to_chat(user, "\blue You secure the piping inside the frame.")
+			to_chat(user, "<span class='notice'>You secure the piping inside the frame.</span>")
 			buildstate++
 			update_icon()
 			return
@@ -184,17 +188,17 @@
 		if(buildstate == 2)
 			var/obj/item/stack/sheet/metal/M = W
 			if(M.use(5))
-				to_chat(user, "\blue You assemble a chassis around the cannon frame.")
+				to_chat(user, "<span class='notice'>You assemble a chassis around the cannon frame.</span>")
 				buildstate++
 				update_icon()
 			else
-				to_chat(user, "\blue You need at least five metal sheets to complete this task.")
+				to_chat(user, "<span class='notice'>You need at least five metal sheets to complete this task.</span>")
 			return
 	else if(istype(W,/obj/item/device/transfer_valve))
 		if(buildstate == 4)
 			user.drop_item()
 			qdel(W)
-			to_chat(user, "\blue You install the transfer valve and connect it to the piping.")
+			to_chat(user, "<span class='notice'>You install the transfer valve and connect it to the piping.</span>")
 			buildstate++
 			update_icon()
 			return
@@ -203,26 +207,29 @@
 			var/obj/item/weapon/weldingtool/T = W
 			if(T.use(0,user))
 				if(!src || !T.isOn()) return
-				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
-				to_chat(user, "\blue You weld the pipe into place.")
+				playsound(src, 'sound/items/Welder2.ogg', VOL_EFFECTS_MASTER)
+				to_chat(user, "<span class='notice'>You weld the pipe into place.</span>")
 				buildstate++
 				update_icon()
 		if(buildstate == 3)
 			var/obj/item/weapon/weldingtool/T = W
 			if(T.use(0,user))
 				if(!src || !T.isOn()) return
-				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
-				to_chat(user, "\blue You weld the metal chassis together.")
+				playsound(src, 'sound/items/Welder2.ogg', VOL_EFFECTS_MASTER)
+				to_chat(user, "<span class='notice'>You weld the metal chassis together.</span>")
 				buildstate++
 				update_icon()
 		if(buildstate == 5)
 			var/obj/item/weapon/weldingtool/T = W
 			if(T.use(0,user))
 				if(!src || !T.isOn()) return
-				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
-				to_chat(user, "\blue You weld the valve into place.")
+				playsound(src, 'sound/items/Welder2.ogg', VOL_EFFECTS_MASTER)
+				to_chat(user, "<span class='notice'>You weld the valve into place.</span>")
 				new /obj/item/weapon/storage/pneumatic(get_turf(src))
 				qdel(src)
 		return
 	else
 		..()
+
+#undef PNEUMATIC_SPEED_CAP
+#undef PNEUMATIC_SPEED_DIVISOR

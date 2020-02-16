@@ -362,6 +362,7 @@ var/list/slot_equipment_priority = list(
 		if(SLOT_WEAR_MASK) return wear_mask
 		if(SLOT_L_HAND) return l_hand
 		if(SLOT_R_HAND) return r_hand
+		if(SLOT_S_STORE) return s_store
 	return null
 
 /mob/proc/get_equipped_items()
@@ -495,7 +496,7 @@ var/list/slot_equipment_priority = list(
 	if(is_busy() || !canmove || !in_range(src, target) || isdrone(src) || incapacitated() || !Adjacent(target))
 		return FALSE
 
-	if(ishuman(src) || isrobot(src) || ismonkey(src) || isIAN(src) || isalienadult(src))
+	if(ishuman(src) || isrobot(src) || ismonkey(src) || isIAN(src) || isxenoadult(src))
 		return TRUE
 
 //Create delay for equipping

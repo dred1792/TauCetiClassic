@@ -189,8 +189,8 @@
 	return 1
 
 /obj/screen/zone_sel/update_icon()
-	overlays.Cut()
-	overlays += image('icons/mob/zone_sel.dmi', "[selecting]")
+	cut_overlays()
+	add_overlay(image('icons/mob/zone_sel.dmi', "[selecting]"))
 
 /obj/screen/pull
 	name = "stop pulling"
@@ -252,7 +252,7 @@
 					if("walk")
 						usr.m_intent = "run"
 						usr.hud_used.move_intent.icon_state = "running"
-				if(istype(usr,/mob/living/carbon/alien/humanoid))
+				if(istype(usr,/mob/living/carbon/xenomorph/humanoid))
 					usr.update_icons()
 		if("m_intent")
 			if(!usr.m_int)
@@ -291,7 +291,7 @@
 							var/mob/living/carbon/human/H = C
 							if(istype(H.head, /obj/item/clothing/head/helmet/space) && istype(H.wear_suit, /obj/item/clothing/suit/space))
 								internalsound = 'sound/misc/riginternaloff.ogg'
-						playsound(C.loc, internalsound, 85, 0, -5)
+						playsound(C, internalsound, VOL_EFFECTS_MASTER, null, FALSE, -5)
 						if(C.internals)
 							C.internals.icon_state = "internal0"
 					else
@@ -372,7 +372,7 @@
 										var/mob/living/carbon/human/H = C
 										if(istype(H.head, /obj/item/clothing/head/helmet/space) && istype(H.wear_suit, /obj/item/clothing/suit/space))
 											internalsound = 'sound/misc/riginternalon.ogg'
-									playsound(C.loc, internalsound, 85, 0, -5)
+									playsound(C, internalsound, VOL_EFFECTS_MASTER, null, FALSE, -5)
 
 								if(C.internal)
 									if(C.internals)

@@ -144,21 +144,21 @@ Please contact me on #coderbus IRC. ~Carn x
 /mob/living/carbon/human/proc/apply_overlay(cache_index)
 	var/image/I = overlays_standing[cache_index]
 	if(I)
-		overlays += I
+		add_overlay(I)
 
 /mob/living/carbon/human/proc/remove_overlay(cache_index)
 	if(overlays_standing[cache_index])
-		overlays -= overlays_standing[cache_index]
+		cut_overlay(overlays_standing[cache_index])
 		overlays_standing[cache_index] = null
 
 /mob/living/carbon/human/proc/apply_damage_overlay(cache_index)
 	var/image/I = overlays_damage[cache_index]
 	if(I)
-		overlays += I
+		add_overlay(I)
 
 /mob/living/carbon/human/proc/remove_damage_overlay(cache_index)
 	if(overlays_damage[cache_index])
-		overlays -= overlays_damage[cache_index]
+		cut_overlay(overlays_damage[cache_index])
 		overlays_damage[cache_index] = null
 
 //UPDATES OVERLAYS FROM OVERLAYS_LYING/OVERLAYS_STANDING
@@ -171,9 +171,9 @@ Please contact me on #coderbus IRC. ~Carn x
 //DAMAGE OVERLAYS
 /mob/living/carbon/human/UpdateDamageIcon(obj/item/organ/external/BP)
 	remove_damage_overlay(BP.limb_layer)
-	if(species.damage_mask && !(BP.status & ORGAN_DESTROYED))
+	if(species.damage_mask && (BP in bodyparts))
 		var/image/standing = image("icon" = 'icons/mob/human_races/damage_overlays.dmi', "icon_state" = "[BP.body_zone]_[BP.damage_state]", "layer" = -DAMAGE_LAYER)
-		standing.color = species.blood_datum.color
+		standing.color = BP.damage_state_color()
 		overlays_damage[BP.limb_layer] = standing
 		apply_damage_overlay(BP.limb_layer)
 
@@ -183,30 +183,14 @@ Please contact me on #coderbus IRC. ~Carn x
 	remove_overlay(BODY_LAYER)
 	var/list/standing = list()
 
-	var/fat = (FAT in mutations) ? "fat" : null
+	var/fat = HAS_TRAIT(src, TRAIT_FAT) ? "fat" : null
 	var/g = (gender == FEMALE ? "f" : "m")
 
-	var/mutable_appearance/base_icon = mutable_appearance(null, null, -BODY_LAYER)
-	var/race_icon =   species.icobase
-	var/deform_icon = species.deform
-
 	for(var/obj/item/organ/external/BP in bodyparts)
-
-		var/mutable_appearance/temp //Hold the bodypart icon for processing.
-
-		if(BP.status & ORGAN_DESTROYED)
+		if(BP.is_stump)
 			continue
 
-		if(BP.body_zone == BP_CHEST)
-			temp = BP.get_icon(race_icon, deform_icon, g, fat)
-		else if (BP.body_zone == BP_GROIN || BP.body_zone == BP_HEAD)
-			temp = BP.get_icon(race_icon, deform_icon, g)
-		else
-			temp = BP.get_icon(race_icon, deform_icon)
-
-		base_icon.overlays += temp
-
-	standing += base_icon
+		standing += BP.get_icon(BODY_LAYER)
 
 	//Underwear
 	if((underwear > 0) && (underwear < 12) && species.flags[HAS_UNDERWEAR])
@@ -220,7 +204,7 @@ Please contact me on #coderbus IRC. ~Carn x
 	if(!fat && socks > 0 && socks < socks_t.len && species.flags[HAS_UNDERWEAR])
 		var/obj/item/organ/external/r_foot = bodyparts_by_name[BP_R_LEG]
 		var/obj/item/organ/external/l_foot = bodyparts_by_name[BP_L_LEG]
-		if(r_foot && !(r_foot.status & ORGAN_DESTROYED) && l_foot && !(l_foot.status & ORGAN_DESTROYED))
+		if(r_foot && !r_foot.is_stump && l_foot && !l_foot.is_stump)
 			standing += mutable_appearance('icons/mob/human_socks.dmi', "socks[socks]_s", -BODY_LAYER)
 
 	update_tail_showing()
@@ -235,7 +219,7 @@ Please contact me on #coderbus IRC. ~Carn x
 	remove_overlay(HAIR_LAYER)
 
 	var/obj/item/organ/external/head/BP = bodyparts_by_name[BP_HEAD]
-	if(!BP || (BP.status & ORGAN_DESTROYED))
+	if(!BP || (BP.is_stump))
 		return
 
 	//masks and helmets can obscure our hair.
@@ -247,8 +231,8 @@ Please contact me on #coderbus IRC. ~Carn x
 
 	if(f_style)
 		var/datum/sprite_accessory/facial_hair_style = facial_hair_styles_list[f_style]
-		if(facial_hair_style && facial_hair_style.species_allowed && (species.name in facial_hair_style.species_allowed))
-			var/image/facial_s = image("icon" = facial_hair_style.icon, "icon_state" = "[facial_hair_style.icon_state]_s", "layer" = -HAIR_LAYER)
+		if(facial_hair_style && facial_hair_style.species_allowed && (BP.species.name in facial_hair_style.species_allowed))
+			var/mutable_appearance/facial_s = mutable_appearance(facial_hair_style.icon, "[facial_hair_style.icon_state]_s", -HAIR_LAYER)
 			if(facial_hair_style.do_colouration)
 				if(!facial_painted)
 					facial_s.color = RGB_CONTRAST(r_facial, g_facial, b_facial)
@@ -258,8 +242,8 @@ Please contact me on #coderbus IRC. ~Carn x
 
 	if(h_style && !(head && (head.flags & BLOCKHEADHAIR)))
 		var/datum/sprite_accessory/hair_style = hair_styles_list[h_style]
-		if(hair_style && hair_style.species_allowed && (species.name in hair_style.species_allowed))
-			var/image/hair_s = image("icon" = hair_style.icon, "icon_state" = "[hair_style.icon_state]_s", "layer" = -HAIR_LAYER)
+		if(hair_style && hair_style.species_allowed && (BP.species.name in hair_style.species_allowed))
+			var/mutable_appearance/hair_s = mutable_appearance(hair_style.icon, "[hair_style.icon_state]_s", -HAIR_LAYER)
 			if(hair_style.do_colouration)
 				if(!hair_painted)
 					hair_s.color = RGB_CONTRAST(r_hair, g_hair, b_hair)
@@ -280,11 +264,9 @@ Please contact me on #coderbus IRC. ~Carn x
 
 /mob/living/carbon/human/update_mutations()
 	remove_overlay(MUTATIONS_LAYER)
-	var/fat
-	if(FAT in mutations)
-		fat = "fat"
 
-	var/list/standing	= list()
+	var/list/standing = list()
+	var/fat = HAS_TRAIT(src, TRAIT_FAT) ? "fat" : null
 	var/g = (gender == FEMALE) ? "f" : "m"
 
 	for(var/datum/dna/gene/gene in dna_genes)
@@ -318,11 +300,9 @@ Please contact me on #coderbus IRC. ~Carn x
 /mob/living/carbon/human/proc/update_mutantrace()
 	remove_overlay(MUTANTRACE_LAYER)
 
-	var/fat
-	if(FAT in mutations)
-		fat = "fat"
+	var/list/standing = list()
+	var/fat = HAS_TRAIT(src, TRAIT_FAT) ? "fat" : null
 
-	var/list/standing	= list()
 	if(dna)
 		switch(dna.mutantrace)
 			if("golem" , "shadow")
@@ -344,7 +324,8 @@ Please contact me on #coderbus IRC. ~Carn x
 	if(standing.len)
 		overlays_standing[MUTANTRACE_LAYER]	= standing
 
-	update_hair()
+	if(species.flags[HAS_HAIR] || !(HUSK in mutations))
+		update_hair()
 
 	apply_overlay(MUTANTRACE_LAYER)
 
@@ -374,7 +355,8 @@ Please contact me on #coderbus IRC. ~Carn x
 //For legacy support.
 /mob/living/carbon/human/regenerate_icons()
 	..()
-	if(monkeyizing)		return
+	if(notransform)
+		return
 	update_hair()
 	update_mutations()
 	update_mutantrace()
@@ -442,15 +424,15 @@ Please contact me on #coderbus IRC. ~Carn x
 				if(A.icon_custom)
 					tie = image("icon" = A.icon_custom, "icon_state" = "[tie_color]_mob", "layer" = -UNIFORM_LAYER + A.layer_priority)
 				else
-					tie = image("icon" = 'icons/mob/ties.dmi', "icon_state" = "[tie_color]", "layer" = -UNIFORM_LAYER + A.layer_priority)
+					tie = image("icon" = 'icons/mob/accessory.dmi', "icon_state" = "[tie_color]", "layer" = -UNIFORM_LAYER + A.layer_priority)
 				tie.color = A.color
-				standing.overlays += tie
+				standing.add_overlay(tie)
 
-		if(FAT in mutations)
+		if(HAS_TRAIT(src, TRAIT_FAT))
 			if(U.flags & ONESIZEFITSALL)
 				standing.icon	= 'icons/mob/uniform_fat.dmi'
 			else
-				to_chat(src, "\red You burst out of \the [U]!")
+				to_chat(src, "<span class='warning'>You burst out of \the [U]!</span>")
 				drop_from_inventory(U)
 				return
 
@@ -579,7 +561,7 @@ Please contact me on #coderbus IRC. ~Carn x
 		if(shoes.dirt_overlay)
 			var/image/bloodsies = image("icon"='icons/effects/blood.dmi', "icon_state"="shoeblood")
 			bloodsies.color = shoes.dirt_overlay.color
-			standing.overlays += bloodsies
+			standing.add_overlay(bloodsies)
 	else
 		if(feet_blood_DNA)
 			var/image/bloodsies = image("icon"='icons/effects/blood.dmi', "icon_state"="shoeblood")
@@ -675,7 +657,7 @@ Please contact me on #coderbus IRC. ~Carn x
 			var/obj/item/clothing/suit/S = wear_suit
 			var/image/bloodsies = image("icon"='icons/effects/blood.dmi', "icon_state"="[S.blood_overlay_type]blood")
 			bloodsies.color = wear_suit.dirt_overlay.color
-			standing.overlays += bloodsies
+			standing.add_overlay(bloodsies)
 		standing.color = wear_suit.color
 		overlays_standing[SUIT_LAYER] = standing
 
@@ -684,9 +666,9 @@ Please contact me on #coderbus IRC. ~Carn x
 			drop_l_hand()
 			drop_r_hand()
 
-		if(FAT in mutations)
+		if(HAS_TRAIT(src, TRAIT_FAT))
 			if(!(wear_suit.flags & ONESIZEFITSALL))
-				to_chat(src, "\red You burst out of \the [wear_suit]!")
+				to_chat(src, "<span class='warning'>You burst out of \the [wear_suit]!</span>")
 				drop_from_inventory(wear_suit)
 				return
 
@@ -843,9 +825,9 @@ Please contact me on #coderbus IRC. ~Carn x
 /mob/living/carbon/human/proc/update_tail_showing()
 	remove_overlay(TAIL_LAYER)
 
-	if(species.tail && species.flags[HAS_TAIL] && !(HUSK in mutations))
+	if(species.tail && species.flags[HAS_TAIL] && !(HUSK in mutations) && bodyparts_by_name[BP_CHEST])
 		if(!wear_suit || !(wear_suit.flags_inv & HIDETAIL) && !istype(wear_suit, /obj/item/clothing/suit/space))
-			var/image/tail_s = image("icon" = 'icons/effects/species.dmi', "icon_state" = "[species.tail]_s")
+			var/image/tail_s = image("icon" = 'icons/mob/species/tail.dmi', "icon_state" = species.tail)
 
 			var/obj/item/organ/external/chest/BP = bodyparts_by_name[BP_CHEST]
 
@@ -895,9 +877,11 @@ Please contact me on #coderbus IRC. ~Carn x
 
 	var/list/standing = list()
 	for(var/obj/item/organ/external/BP in bodyparts)
+		BP.bandaged = FALSE
 		if(BP.wounds.len)
 			for(var/datum/wound/W in BP.wounds)
 				if(W.bandaged)
+					BP.bandaged = TRUE
 					standing += image("icon" = 'icons/mob/bandages.dmi', "icon_state" = "[BP.body_zone]", "layer" = -BANDAGE_LAYER)
 
 	if(standing.len)

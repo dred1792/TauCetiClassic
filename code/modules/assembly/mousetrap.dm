@@ -40,9 +40,9 @@
 			H.updatehealth()
 	else if(ismouse(target))
 		var/mob/living/simple_animal/mouse/M = target
-		visible_message("\red <b>SPLAT!</b>")
+		visible_message("<span class='warning'><b>SPLAT!</b></span>")
 		M.splat()
-	playsound(target.loc, 'sound/effects/snap.ogg', 50, 1)
+	playsound(target, 'sound/effects/snap.ogg', VOL_EFFECTS_MASTER)
 	layer = MOB_LAYER - 0.2
 	armed = 0
 	update_icon()
@@ -60,7 +60,7 @@
 		to_chat(user, "<span class='notice'>You disarm [src].</span>")
 	armed = !armed
 	update_icon()
-	playsound(user.loc, 'sound/weapons/handcuffs.ogg', 30, 1, -3)
+	playsound(user, 'sound/weapons/handcuffs.ogg', VOL_EFFECTS_MASTER, 30, null, -3)
 
 /obj/item/device/assembly/mousetrap/attack_hand(mob/living/user)
 	if(armed)
@@ -92,10 +92,10 @@
 		return 1	//end the search!
 	return 0
 
-/obj/item/device/assembly/mousetrap/hitby(A)
+/obj/item/device/assembly/mousetrap/hitby(atom/movable/AM, datum/thrownthing/throwingdatum)
 	if(!armed)
 		return ..()
-	visible_message("<span class='warning'>[src] is triggered by [A].</span>")
+	visible_message("<span class='warning'>[src] is triggered by [AM].</span>")
 	triggered(null)
 
 /obj/item/device/assembly/mousetrap/armed

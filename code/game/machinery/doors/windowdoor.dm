@@ -42,6 +42,7 @@
 		icon_state = base_state
 	else
 		icon_state = "[src.base_state]open"
+	SSdemo.mark_dirty(src)
 
 /obj/machinery/door/window/proc/shatter(display_message = 1)
 	if(!(flags & NODECONSTRUCT))
@@ -68,7 +69,7 @@
 			ae.broken = TRUE
 			operating = 0
 	src.density = 0
-	playsound(src, "shatter", 70, 1)
+	playsound(src, pick(SOUNDIN_SHATTER), VOL_EFFECTS_MASTER)
 	if(display_message)
 		visible_message("[src] shatters!")
 	qdel(src)
@@ -162,7 +163,7 @@
 /obj/machinery/door/window/do_open()
 	if(hasPower())
 		use_power(15)
-	playsound(src, door_open_sound, 100, 1)
+	playsound(src, door_open_sound, VOL_EFFECTS_MASTER)
 	do_animate("opening")
 	icon_state = "[base_state]open"
 	sleep(10)
@@ -174,7 +175,7 @@
 /obj/machinery/door/window/do_close()
 	if(hasPower())
 		use_power(15)
-	playsound(src, door_close_sound, 100, 1)
+	playsound(src, door_close_sound, VOL_EFFECTS_MASTER)
 	do_animate("closing")
 	icon_state = base_state
 	density = TRUE
@@ -205,16 +206,16 @@
 	..()
 
 //When an object is thrown at the window
-/obj/machinery/door/window/hitby(AM)
+/obj/machinery/door/window/hitby(atom/movable/AM, datum/thrownthing/throwingdatum)
 
 	..()
-	visible_message("\red <B>The glass door was hit by [AM].</B>", 1)
+	visible_message("<span class='warning'><B>The glass door was hit by [AM].</B></span>")
 	var/tforce = 0
 	if(ismob(AM))
 		tforce = 40
 	else
 		tforce = AM:throwforce
-	playsound(src.loc, 'sound/effects/Glasshit.ogg', 100, 1)
+	playsound(src, 'sound/effects/Glasshit.ogg', VOL_EFFECTS_MASTER)
 	take_damage(tforce)
 	//..() //Does this really need to be here twice? The parent proc doesn't even do anything yet. - Nodrak
 	return
@@ -223,13 +224,13 @@
 	if(src.operating)
 		return
 	user.do_attack_animation(src)
-	playsound(src.loc, 'sound/effects/Glasshit.ogg', 75, 1)
+	playsound(src, 'sound/effects/Glasshit.ogg', VOL_EFFECTS_MASTER)
 	user.visible_message("<span class='danger'>[user] smashes against the [src.name].</span>", \
 						"<span class='userdanger'>[user] smashes against the [src.name].</span>")
 	take_damage(damage)
 
 /obj/machinery/door/window/attack_alien(mob/user)
-	if(islarva(user))
+	if(isxenolarva(user))
 		return
 	user.SetNextMove(CLICK_CD_MELEE)
 	attack_generic(user, 25)
@@ -264,26 +265,22 @@
 		user.SetNextMove(CLICK_CD_MELEE)
 		if(W.use_charge(user, 6))
 			visible_message("<span class='red'><B>[user]</B> has punched [src]!</span>")
-			playsound(user.loc, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), 50, 1)
+			playsound(user, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), VOL_EFFECTS_MASTER)
 			shatter()
 		return
 
 	//Emags and ninja swords? You may pass.
-	if (density && ((istype(I, /obj/item/weapon/card/emag) && hasPower()) || istype(I, /obj/item/weapon/melee/energy/blade)))
+	if (density && istype(I, /obj/item/weapon/melee/energy/blade))
 		flick("[src.base_state]spark", src)
 		user.SetNextMove(CLICK_CD_MELEE)
 		sleep(6)
-		if(istype(I, /obj/item/weapon/melee/energy/blade))
-			var/datum/effect/effect/system/spark_spread/spark_system = new /datum/effect/effect/system/spark_spread()
-			spark_system.set_up(5, 0, src.loc)
-			spark_system.start()
-			playsound(src.loc, "sparks", 50, 1)
-			playsound(src.loc, 'sound/weapons/blade1.ogg', 50, 1)
-			visible_message("<span class='warning'> The glass door was sliced open by [user]!</span>")
-			open(1)
-			return
-		open()
-		operating = -1
+		var/datum/effect/effect/system/spark_spread/spark_system = new /datum/effect/effect/system/spark_spread()
+		spark_system.set_up(5, 0, src.loc)
+		spark_system.start()
+		playsound(src, pick(SOUNDIN_SPARKS), VOL_EFFECTS_MASTER)
+		playsound(src, 'sound/weapons/blade1.ogg', VOL_EFFECTS_MASTER)
+		visible_message("<span class='warning'> The glass door was sliced open by [user]!</span>")
+		open(1)
 		return
 
 	if(!(flags & NODECONSTRUCT))
@@ -291,7 +288,7 @@
 			if(src.density || src.operating == 1)
 				to_chat(user, "<span class='warning'>You need to open the [src.name] to access the maintenance panel.</span>")
 				return
-			playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
+			playsound(src, 'sound/items/Screwdriver.ogg', VOL_EFFECTS_MASTER)
 			src.p_open = !( src.p_open )
 			to_chat(user, "<span class='notice'>You [p_open ? "open":"close"] the maintenance panel of the [src.name].</span>")
 			return
@@ -366,8 +363,8 @@
 		if( (I.flags&NOBLUDGEON) || !I.force )
 			return
 		var/aforce = I.force
-		playsound(src.loc, 'sound/effects/Glasshit.ogg', 75, 1)
-		visible_message("\red <B>[src] was hit by [I].</B>")
+		playsound(src, 'sound/effects/Glasshit.ogg', VOL_EFFECTS_MASTER)
+		visible_message("<span class='warning'><B>[src] was hit by [I].</B></span>")
 		if(I.damtype == BRUTE || I.damtype == BURN)
 			take_damage(aforce)
 		return
@@ -387,6 +384,16 @@
 		do_animate("deny")
 
 	return
+
+/obj/machinery/door/window/emag_act(mob/user)
+	if(density)
+		flick("[src.base_state]spark", src)
+		user.SetNextMove(CLICK_CD_MELEE)
+		sleep(6)
+		open()
+		operating = -1
+		return TRUE
+	return FALSE
 
 /obj/machinery/door/window/brigdoor
 	name = "Secure Door"

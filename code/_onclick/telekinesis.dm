@@ -121,7 +121,7 @@ var/const/tk_maxrange = 15
 		if(8 to tk_maxrange)
 			user.next_move += 10
 		else
-			to_chat(user, "\blue Your mind won't reach that far.")
+			to_chat(user, "<span class='notice'>Your mind won't reach that far.</span>")
 			return
 
 	if(!focus)
@@ -177,9 +177,9 @@ var/const/tk_maxrange = 15
 
 
 /obj/item/tk_grab/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(focus && focus.icon && focus.icon_state)
-		overlays += icon(focus.icon,focus.icon_state)
+		add_overlay(icon(focus.icon,focus.icon_state))
 	return
 
 /*Not quite done likely needs to use something thats not get_step_to

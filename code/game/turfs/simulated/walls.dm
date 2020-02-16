@@ -30,6 +30,8 @@
 		/turf/simulated/wall/r_wall,
 		/obj/structure/falsewall,
 		/obj/structure/falsewall/reinforced,
+		/obj/structure/girder,
+		/obj/structure/girder/reinforced
 		)
 	smooth = SMOOTH_TRUE
 
@@ -70,7 +72,7 @@
 		generate_overlays()
 
 	if(!damage)
-		overlays.Cut()
+		cut_overlays()
 		return
 
 	var/overlay = round(damage / damage_cap * damage_overlays.len) + 1
@@ -80,8 +82,8 @@
 	if(damage_overlay && overlay == damage_overlay) //No need to update.
 		return
 
-	overlays.Cut()
-	overlays += damage_overlays[overlay]
+	cut_overlays()
+	add_overlay(damage_overlays[overlay])
 	damage_overlay = overlay
 
 	return
@@ -125,7 +127,7 @@
 	if(devastated)
 		devastate_wall()
 	else
-		playsound(src, 'sound/items/Welder.ogg', 100, 1)
+		playsound(src, 'sound/items/Welder.ogg', VOL_EFFECTS_MASTER)
 		var/newgirder = break_wall()
 		transfer_fingerprints_to(newgirder)
 
@@ -232,18 +234,18 @@
 /turf/simulated/wall/attack_animal(mob/living/simple_animal/M)
 	if(M.wall_smash)
 		if (istype(src, /turf/simulated/wall/r_wall) && !rotting)
-			to_chat(M, text("\blue This wall is far too strong for you to destroy."))
+			to_chat(M, text("<span class='notice'>This wall is far too strong for you to destroy.</span>"))
 			return
 		else
 			if (prob(40) || rotting)
-				to_chat(M, text("\blue You smash through the wall."))
+				to_chat(M, text("<span class='notice'>You smash through the wall.</span>"))
 				dismantle_wall(1)
 				return
 			else
-				to_chat(M, text("\blue You smash against the wall."))
+				to_chat(M, text("<span class='notice'>You smash against the wall.</span>"))
 				return
 
-	to_chat(M, "\blue You push the wall but nothing happens!")
+	to_chat(M, "<span class='notice'>You push the wall but nothing happens!</span>")
 	return */
 
 /turf/simulated/wall/attack_animal(mob/living/simple_animal/M)
@@ -251,9 +253,9 @@
 	if(M.environment_smash >= 2)
 		if(istype(M, /mob/living/simple_animal/hulk))
 			var/mob/living/simple_animal/hulk/Hulk = M
-			playsound(Hulk, 'sound/weapons/tablehit1.ogg', 50, 1)
+			playsound(Hulk, 'sound/weapons/tablehit1.ogg', VOL_EFFECTS_MASTER)
 			Hulk.health -= rand(4,10)
-		playsound(M.loc, 'sound/effects/grillehit.ogg', 50, 1)
+		playsound(M, 'sound/effects/grillehit.ogg', VOL_EFFECTS_MASTER)
 		if(istype(src, /turf/simulated/wall/r_wall))
 			if(M.environment_smash == 3)
 				take_damage(rand(25, 75))
@@ -262,7 +264,7 @@
 				to_chat(M, "<span class='info'>This wall is far too strong for you to destroy.</span>")
 		else
 			if (prob(40) || rotting)
-				to_chat(M, text("\blue You smash through the wall."))
+				to_chat(M, text("<span class='notice'>You smash through the wall.</span>"))
 				dismantle_wall(1)
 			else
 				take_damage(rand(25, 75))
@@ -274,20 +276,20 @@
 	user.SetNextMove(CLICK_CD_MELEE)
 	if(HULK in user.mutations) //#Z2 No more chances, just randomized damage and hurt intent
 		if(user.a_intent == "hurt")
-			playsound(user.loc, 'sound/effects/grillehit.ogg', 50, 1)
-			to_chat(user, text("\blue You punch the wall."))
+			playsound(user, 'sound/effects/grillehit.ogg', VOL_EFFECTS_MASTER)
+			to_chat(user, text("<span class='notice'>You punch the wall.</span>"))
 			take_damage(rand(15, 50))
 			if(prob(25))
 				user.say(pick(";RAAAAAAAARGH!", ";HNNNNNNNNNGGGGGGH!", ";GWAAAAAAAARRRHHH!", "NNNNNNNNGGGGGGGGHH!", ";AAAAAAARRRGH!" ))
 			return //##Z2
 
 	if(rotting)
-		to_chat(user, "\blue The wall crumbles under your touch.")
+		to_chat(user, "<span class='notice'>The wall crumbles under your touch.</span>")
 		dismantle_wall()
 		return
 
-	to_chat(user, "\blue You push the wall but nothing happens!")
-	playsound(src, 'sound/weapons/Genhit.ogg', 25, 1)
+	to_chat(user, "<span class='notice'>You push the wall but nothing happens!</span>")
+	playsound(src, 'sound/weapons/Genhit.ogg', VOL_EFFECTS_MASTER, 25)
 	src.add_fingerprint(user)
 	return
 
@@ -307,12 +309,12 @@
 			var/obj/item/weapon/weldingtool/WT = W
 			if(WT.use(0,user))
 				to_chat(user, "<span class='notice'>You burn away the fungi with \the [WT].</span>")
-				playsound(src, 'sound/items/Welder.ogg', 10, 1)
+				playsound(src, 'sound/items/Welder.ogg', VOL_EFFECTS_MASTER, 10)
 				for(var/obj/effect/E in src) if(E.name == "Wallrot")
 					qdel(E)
 				rotting = 0
 				return
-		else if(!is_sharp(W) && W.force >= 10 || W.force >= 20)
+		else if(!W.is_sharp() && W.force >= 10 || W.force >= 20)
 			to_chat(user, "<span class='notice'>\The [src] crumbles away under the force of your [W.name].</span>")
 			src.dismantle_wall(1)
 			return
@@ -334,8 +336,8 @@
 
 			EB.spark_system.start()
 			to_chat(user, "<span class='notice'>You slash \the [src] with \the [EB]; the thermite ignites!</span>")
-			playsound(src, "sparks", 50, 1)
-			playsound(src, 'sound/weapons/blade1.ogg', 50, 1)
+			playsound(src, pick(SOUNDIN_SPARKS), VOL_EFFECTS_MASTER)
+			playsound(src, 'sound/weapons/blade1.ogg', VOL_EFFECTS_MASTER)
 
 			thermitemelt(user)
 			return
@@ -386,8 +388,7 @@
 			if(user.loc == T && user.get_active_hand() == W)
 				to_chat(user, "<span class='notice'>You remove the outer plating.</span>")
 				dismantle_wall()
-				for(var/mob/O in viewers(user, 5))
-					O.show_message("<span class='warning'>The wall was sliced apart by [user]!</span>", 1, "<span class='warning'>You hear metal being sliced apart.</span>", 2)
+				visible_message("<span class='warning'>The wall was sliced apart by [user]!</span>", blind_message = "<span class='warning'>You hear metal being sliced apart.</span>", viewing_distance = 5)
 		return
 
 	//DRILLING
@@ -404,8 +405,7 @@
 			if(user.loc == T && user.get_active_hand() == W)
 				to_chat(user, "<span class='notice'>Your drill tears though the last of the reinforced plating.</span>")
 				dismantle_wall()
-				for(var/mob/O in viewers(user, 5))
-					O.show_message("<span class='warning'>The wall was drilled through by [user]!</span>", 1, "<span class='warning'>You hear the grinding of metal.</span>", 2)
+				visible_message("<span class='warning'>The wall was drilled through by [user]!</span>", blind_message = "<span class='warning'>You hear the grinding of metal.</span>", viewing_distance = 5)
 		return
 
 	else if(istype(W, /obj/item/weapon/melee/energy/blade))
@@ -414,7 +414,7 @@
 
 		EB.spark_system.start()
 		to_chat(user, "<span class='notice'>You stab \the [EB] into the wall and begin to slice it apart.</span>")
-		playsound(src, "sparks", 50, 1)
+		playsound(src, pick(SOUNDIN_SPARKS), VOL_EFFECTS_MASTER)
 		if(W.use_tool(src, user, 70))
 			if(mineral == "diamond")
 				sleep(70)
@@ -423,18 +423,17 @@
 
 			if(user.loc == T && user.get_active_hand() == W)
 				EB.spark_system.start()
-				playsound(src, "sparks", 50, 1)
-				playsound(src, 'sound/weapons/blade1.ogg', 50, 1)
+				playsound(src, pick(SOUNDIN_SPARKS), VOL_EFFECTS_MASTER)
+				playsound(src, 'sound/weapons/blade1.ogg', VOL_EFFECTS_MASTER)
 				dismantle_wall(1)
-				for(var/mob/O in viewers(user, 5))
-					O.show_message("<span class='warning'>The wall was sliced apart by [user]!</span>", 1, "<span class='warning'>You hear metal being sliced apart and sparks flying.</span>", 2)
+				visible_message("<span class='warning'>The wall was sliced apart by [user]!</span>", blind_message = "<span class='warning'>You hear metal being sliced apart and sparks flying.</span>", viewing_distance = 5)
 		return
 	else if(istype(W,/obj/item/weapon/changeling_hammer) && !rotting)
 		var/obj/item/weapon/changeling_hammer/C = W
 		visible_message("<span class='danger'>[user] has punched the[src]!</span>")
 		user.do_attack_animation(src)
 		if(C.use_charge(user))
-			playsound(user.loc, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), 50, 1)
+			playsound(user, pick('sound/effects/explosion1.ogg', 'sound/effects/explosion2.ogg'), VOL_EFFECTS_MASTER)
 			take_damage(pick(10, 20, 30))
 		return
 

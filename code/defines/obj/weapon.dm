@@ -10,10 +10,10 @@
 	throw_range = 4
 	w_class = ITEM_SIZE_SMALL
 	attack_verb = list("called", "rang")
-	hitsound = 'sound/weapons/ring.ogg'
+	hitsound = list('sound/weapons/ring.ogg')
 
 /obj/item/weapon/rsp
-	name = "\improper Rapid-Seed-Producer (RSP)"
+	name = "Rapid-Seed-Producer (RSP)"
 	desc = "A device used to rapidly deploy seeds."
 	icon = 'icons/obj/items.dmi'
 	icon_state = "rcd"
@@ -64,10 +64,11 @@
 	desc = "A wrapped item."
 	icon = 'icons/obj/items.dmi'
 	icon_state = "gift3"
-	var/size = 3.0
-	var/obj/item/gift = null
 	item_state = "gift"
-	w_class = ITEM_SIZE_LARGE
+	w_class = ITEM_SIZE_NORMAL
+	var/size = ITEM_SIZE_NORMAL
+	var/sender = FALSE
+	var/recipient = FALSE
 
 /obj/item/weapon/legcuffs
 	name = "legcuffs"
@@ -110,12 +111,8 @@
 					H.legcuffed = src
 					src.loc = H
 					H.update_inv_legcuffed()
-					to_chat(H, "<span class='danger'>You step on \the [src]!</span>")
+					H.visible_message("<span class='danger'>[H] steps on \the [src].</span>", "<span class='danger'>You step on \the [src]!</span>")
 					feedback_add_details("handcuffs","B") //Yes, I know they're legcuffs. Don't change this, no need for an extra variable. The "B" is used to tell them apart.
-					for(var/mob/O in viewers(H, null))
-						if(O == H)
-							continue
-						O.show_message("<span class='danger'>[H] steps on \the [src].</span>", 1)
 		if(isanimal(AM) && !istype(AM, /mob/living/simple_animal/parrot) && !istype(AM, /mob/living/simple_animal/construct) && !istype(AM, /mob/living/simple_animal/shade) && !istype(AM, /mob/living/simple_animal/hostile/viscerator))
 			armed = 0
 			var/mob/living/simple_animal/SA = AM
@@ -135,9 +132,9 @@
 
 /obj/item/weapon/legcuffs/bola/after_throw(datum/callback/callback)
 	..()
-	playsound(src.loc,'sound/weapons/bolathrow.ogg', 75, 1)
+	playsound(src,'sound/weapons/bolathrow.ogg', VOL_EFFECTS_MASTER)
 
-/obj/item/weapon/legcuffs/bola/throw_impact(atom/hit_atom)
+/obj/item/weapon/legcuffs/bola/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	if(!iscarbon(hit_atom))//if it gets caught or the target can't be cuffed,
 		return
 	var/mob/living/carbon/C = hit_atom
@@ -197,6 +194,7 @@
 	item_state = "shard-glass"
 	g_amt = 3750
 	attack_verb = list("stabbed", "slashed", "sliced", "cut")
+	var/on_step_sound = 'sound/effects/glass_step.ogg'
 
 /obj/item/weapon/shard/suicide_act(mob/user)
 	to_chat(viewers(user), pick("<span class='danger'>[user] is slitting \his wrists with the shard of glass! It looks like \he's trying to commit suicide.</span>", \
@@ -204,7 +202,7 @@
 	return (BRUTELOSS)
 
 /obj/item/weapon/shard/attack(mob/living/carbon/M, mob/living/carbon/user)
-	playsound(loc, 'sound/weapons/bladeslice.ogg', 50, 1, -1)
+	playsound(src, 'sound/weapons/bladeslice.ogg', VOL_EFFECTS_MASTER)
 	return ..()
 
 /obj/item/weapon/shard/afterattack(atom/A, mob/user, proximity)
@@ -247,6 +245,7 @@
 	icon = 'icons/obj/shards.dmi'
 	icon_state = "shrapnellarge"
 	desc = "A bunch of tiny bits of shattered metal."
+	on_step_sound = 'sound/effects/metalstep.ogg'
 
 /obj/item/weapon/shard/shrapnel/atom_init()
 	. = ..()
@@ -289,7 +288,7 @@
 	icon = 'icons/obj/wizard.dmi'
 	icon_state = "staff"
 	force = 3.0
-	hitsound = 'sound/effects/magic.ogg'
+	hitsound = list('sound/effects/magic.ogg')
 	throwforce = 5.0
 	throw_speed = 1
 	throw_range = 5
@@ -404,7 +403,7 @@
 	g_amt = 50
 
 /obj/item/weapon/module/id_auth
-	name = "\improper ID authentication module"
+	name = "ID authentication module"
 	icon_state = "id_mod"
 	desc = "A module allowing secure authorization of ID cards."
 
@@ -445,7 +444,7 @@
 	attack_verb = list("chopped", "torn", "cut")
 
 /obj/item/weapon/hatchet/attack(mob/living/carbon/M, mob/living/carbon/user)
-	playsound(loc, 'sound/weapons/bladeslice.ogg', 50, 1, -1)
+	playsound(src, 'sound/weapons/bladeslice.ogg', VOL_EFFECTS_MASTER)
 	return ..()
 
 /obj/item/weapon/hatchet/unathiknife
@@ -496,6 +495,8 @@
 	name = "data cable"
 	icon = 'icons/obj/power.dmi'
 	icon_state = "wire1"
+	flags = NOBLUDGEON | NOATTACKANIMATION | CONDUCT
+	w_class = ITEM_SIZE_SMALL
 
 	var/obj/machinery/machine
 
@@ -520,7 +521,7 @@
 	icon_state = "RPED"
 	item_state = "RPED"
 	w_class = ITEM_SIZE_HUGE
-	can_hold = list("/obj/item/weapon/stock_parts")
+	can_hold = list(/obj/item/weapon/stock_parts)
 	storage_slots = 50
 	use_to_pickup = 1
 	allow_quick_gather = 1
@@ -554,9 +555,9 @@
 /obj/item/weapon/storage/part_replacer/proc/play_rped_sound()
 	//Plays the sound for RPED exhanging or installing parts.
 	if(alt_sound && prob(1))
-		playsound(src, alt_sound, 40, 1)
+		playsound(src, alt_sound, VOL_EFFECTS_MASTER)
 	else
-		playsound(src, pshoom_or_beepboopblorpzingshadashwoosh, 40, 1)
+		playsound(src, pshoom_or_beepboopblorpzingshadashwoosh, VOL_EFFECTS_MASTER)
 
 //Sorts stock parts inside an RPED by their rating.
 //Only use /obj/item/weapon/stock_parts/ with this sort proc!

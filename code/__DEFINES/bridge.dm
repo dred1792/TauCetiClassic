@@ -3,15 +3,16 @@
 
 //service messages
 #define BRIDGE_ROUNDSTAT  "roundstat"  //shuttle/server starting/round starting
-#define BRIDGE_SERVICE    "service"    //debug?
+#define BRIDGE_SERVICE    "service"    //private debug msgs
 #define BRIDGE_ANNOUNCE   "announce"   //general announces for players
 
 //admin
-#define BRIDGE_ADMINCOM   "admincom"   //admin faxes and command console
-#define BRIDGE_ADMINLOG   "adminlog"   //tickets & pm
-#define BRIDGE_ADMINALERT "adminalert" //new ticket and no admins online, panikbunker
-#define BRIDGE_ADMINBAN   "adminban"   //bans
-#define BRIDGE_ADMINWL    "adminwl"    //whitelist changes
+#define BRIDGE_ADMINCOM       "admincom"       //admin faxes and command console
+#define BRIDGE_ADMINLOG       "adminlog"       //tickets & pm
+#define BRIDGE_ADMINALERT     "adminalert"     //new ticket and no admins online, panikbunker
+#define BRIDGE_ADMINBAN       "adminban"       //bans
+#define BRIDGE_ADMINWL        "adminwl"        //whitelist changes
+#define BRIDGE_ADMINIMPORTANT "adminimportant" //important notifications for main channel
 
 //misc
 #define BRIDGE_OOC        "ooc"

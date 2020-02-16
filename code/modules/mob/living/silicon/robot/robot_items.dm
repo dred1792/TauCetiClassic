@@ -34,10 +34,10 @@
 
 				I.loc = src
 				carrying.Add(I)
-				overlays += image("icon" = I.icon, "icon_state" = I.icon_state, "layer" = 30 + I.layer)
+				add_overlay(image("icon" = I.icon, "icon_state" = I.icon_state, "layer" = 30 + I.layer))
 				addedSomething = 1
 		if ( addedSomething )
-			user.visible_message("\blue [user] load some items onto their service tray.")
+			user.visible_message("<span class='notice'>[user] load some items onto their service tray.</span>")
 
 		return
 
@@ -60,7 +60,7 @@
 			dropspot = target.loc
 
 
-		overlays = null
+		cut_overlays()
 
 		var/droppedSomething = 0
 
@@ -77,9 +77,9 @@
 							sleep(rand(2,4))
 		if ( droppedSomething )
 			if ( foundtable )
-				user.visible_message("\blue [user] unloads their service tray.")
+				user.visible_message("<span class='notice'>[user] unloads their service tray.</span>")
 			else
-				user.visible_message("\blue [user] drops all the items on their tray.")
+				user.visible_message("<span class='notice'>[user] drops all the items on their tray.</span>")
 
 	return ..()
 
@@ -99,7 +99,7 @@
 	var/choice = input("Would you like to change colour or mode?") as null|anything in list("Colour","Mode")
 	if(!choice) return
 
-	playsound(src.loc, 'sound/effects/pop.ogg', 50, 0)
+	playsound(src, 'sound/effects/pop.ogg', VOL_EFFECTS_MASTER, null, FALSE)
 
 	switch(choice)
 		if("Colour")
@@ -153,7 +153,7 @@
 	deploy_paper(get_turf(src))
 
 /obj/item/weapon/form_printer/proc/deploy_paper(turf/T)
-	T.visible_message("\blue \The [src.loc] dispenses a sheet of crisp white paper.")
+	T.visible_message("<span class='notice'>\The [src.loc] dispenses a sheet of crisp white paper.</span>")
 	new /obj/item/weapon/paper(T)
 
 //Personal shielding for the combat module.
@@ -193,8 +193,7 @@
 		for(var/mob/living/carbon/slime/slime in viewers(get_turf_loc(user), null))
 			slime.tame = 0
 			slime.rabid = 1
-			for(var/mob/O in viewers(get_turf_loc(user), null))
-				O.show_message(text("\red The [slime] is driven into a frenzy!."), 1)
+			user.visible_message("<span class='warning'>The [slime] is driven into a frenzy!.</span>")
 		uses -= 1
 		to_chat(user, "Bloodlust emitter sends a pulse.")
 	else

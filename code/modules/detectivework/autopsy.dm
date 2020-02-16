@@ -16,6 +16,9 @@
 	var/target_name = null
 	var/timeofdeath = null
 
+/obj/item/weapon/paper/autopsy_report
+	var/list/autopsy_data
+
 /datum/autopsy_data_scanner
 	var/weapon = null // this is the DEFINITE weapon type that was used
 	var/list/bodyparts_scanned = list() // this maps a number of scanned bodyparts to
@@ -81,11 +84,11 @@
 	set category = "Object"
 	set src in view(usr, 1)
 	set name = "Print Data"
-	flick("autopsy_printing",src)
-	playsound(src, 'sound/items/polaroid1.ogg', 50, 1)
-	if(usr.stat || !(istype(usr,/mob/living/carbon/human)))
-		to_chat(usr, "No.")
+	if(!ishuman(usr) || usr.incapacitated() || usr.lying)
 		return
+
+	flick("autopsy_printing",src)
+	playsound(src, 'sound/items/polaroid1.ogg', VOL_EFFECTS_MASTER)
 
 	var/scan_data = ""
 
@@ -153,14 +156,18 @@
 			scan_data += chemID
 			scan_data += "<br>"
 
-	for(var/mob/O in viewers(usr))
-		O.show_message("\red \the [src] rattles and prints out a sheet of paper.", 1)
+	usr.visible_message("<span class='warning'>\the [src] rattles and prints out a sheet of paper.</span>")
 
 	sleep(10)
 
-	var/obj/item/weapon/paper/P = new(usr.loc)
+	var/obj/item/weapon/paper/autopsy_report/P = new(usr.loc)
 	P.name = "Autopsy Data ([target_name])"
 	P.info = "<tt>[scan_data]</tt>"
+	P.autopsy_data = list() // Copy autopsy data for science tool
+	for(var/wdata_idx in wdata)
+		for(var/wound_idx in wdata[wdata_idx].bodyparts_scanned)
+			var/datum/autopsy_data/W = wdata[wdata_idx].bodyparts_scanned[wound_idx]
+			P.autopsy_data += W.copy()
 	P.update_icon()
 
 	if(istype(usr,/mob/living/carbon))
@@ -192,7 +199,7 @@
 			src.wdata = list()
 			src.chemtraces = list()
 			src.timeofdeath = null
-			to_chat(user, "\red A new patient has been registered.. Purging data for previous patient.")
+			to_chat(user, "<span class='warning'>A new patient has been registered.. Purging data for previous patient.</span>")
 
 		src.timeofdeath = M.timeofdeath
 
@@ -203,9 +210,9 @@
 		if(!BP.open)
 			to_chat(usr, "<b>You have to cut the limb open first!</b>")
 			return
-		for(var/mob/O in viewers(M))
-			O.show_message("\red [user.name] scans the wounds on [M.name]'s [BP.name] with \the [src.name]", 1)
-		playsound(src, 'sound/machines/twobeep.ogg', 50, 1)
+
+		M.visible_message("<span class='warning'>[user.name] scans the wounds on [M.name]'s [BP.name] with \the [src.name]</span>")
+		playsound(src, 'sound/machines/twobeep.ogg', VOL_EFFECTS_MASTER)
 		to_chat(user, "[bicon(src)]<span class='notice'>Scanning completed!</span>")
 		src.add_data(BP)
 		flick("autopsy_scanning",src)

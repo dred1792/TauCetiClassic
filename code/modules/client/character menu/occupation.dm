@@ -16,7 +16,7 @@
 
 	. += "<br><a href='?_src_=prefs;preference=job;task=reset'>\[Reset\]</a>"
 
-	if(config.use_ingame_minutes_restriction_for_jobs && config.add_player_age_value && user.client.player_ingame_age < config.add_player_age_value)
+	if(config.use_ingame_minutes_restriction_for_jobs && config.add_player_age_value && (isnum(user.client.player_ingame_age) && user.client.player_ingame_age < config.add_player_age_value))
 		. += "<br><span style='color: red; font-style: italic; font-size: 12px;'>If you are experienced SS13 player, you can ask admins about the possibility of skipping minutes restriction for jobs.</span>"
 
 	. += "<table width='100%' cellpadding='1' cellspacing='0' style='margin-top:10px'><tr><td width='20%'>" // Table within a table for alignment, also allows you to easily add more colomns.
@@ -42,6 +42,9 @@
 		. += "<td width='60%' align='right'>"
 		var/rank = job.title
 		lastJob = job
+		if(!job.map_check())
+			. += "<del>[rank]</del></td><td><b> \[DISABLED]</b></td></tr>"
+			continue
 		if(jobban_isbanned(user, rank))
 			. += "<del>[rank]</del></td><td><b> \[BANNED]</b></td></tr>"
 			continue

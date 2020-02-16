@@ -80,6 +80,7 @@
 	new /obj/item/weapon/storage/belt/medical(src)
 	new /obj/item/clothing/gloves/latex/nitrile(src)
 	new /obj/item/clothing/suit/surgicalapron(src)
+	new /obj/item/weapon/gun/energy/pyrometer/medical(src)
 
 /obj/structure/closet/secure_closet/CMO
 	name = "Chief Medical Officer's Locker"
@@ -124,6 +125,7 @@
 	new /obj/item/weapon/reagent_containers/hypospray/cmo(src)
 	new /obj/item/clothing/suit/surgicalapron(src)
 	new /obj/item/airbag(src)
+	new /obj/item/weapon/storage/pouch/medical_supply(src)
 
 /obj/structure/closet/secure_closet/animal
 	name = "Animal Control"
@@ -148,6 +150,7 @@
 /obj/structure/closet/secure_closet/chemical/PopulateContents()
 	for (var/i in 1 to 2)
 		new /obj/item/weapon/storage/box/pillbottles(src)
+	new /obj/item/weapon/storage/pouch/flare/vial(src)
 
 /obj/structure/closet/secure_closet/medical_wall
 	name = "First Aid Closet"

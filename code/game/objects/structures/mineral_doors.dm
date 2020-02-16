@@ -72,7 +72,7 @@
 
 /obj/structure/mineral_door/proc/Open()
 	isSwitchingStates = TRUE
-	playsound(src, operating_sound, 100, 1)
+	playsound(src, operating_sound, VOL_EFFECTS_MASTER)
 	flick("[initial(icon_state)]_opening", src)
 	sleep(10)
 	density = FALSE
@@ -84,7 +84,7 @@
 
 /obj/structure/mineral_door/proc/Close()
 	isSwitchingStates = TRUE
-	playsound(src, operating_sound, 100, 1)
+	playsound(src, operating_sound, VOL_EFFECTS_MASTER)
 	flick("[initial(icon_state)]_closing", src)
 	sleep(10)
 	density = TRUE
@@ -289,7 +289,7 @@
 	return ..()
 
 /obj/structure/mineral_door/resin/Bumped(atom/M)
-	if(isalien(M) && !isSwitchingStates)
+	if(isxeno(M) && !isSwitchingStates)
 		add_fingerprint(M)
 		Open()
 
@@ -305,7 +305,7 @@
 	qdel(src)
 
 /obj/structure/mineral_door/resin/CheckHealth()
-	playsound(src, 'sound/effects/attackblob.ogg', 100, 1)
+	playsound(src, 'sound/effects/attackblob.ogg', VOL_EFFECTS_MASTER)
 	..()
 
 /obj/structure/mineral_door/resin/bullet_act(obj/item/projectile/Proj)
@@ -314,7 +314,7 @@
 	CheckHealth()
 
 /obj/structure/mineral_door/resin/attack_hand(mob/user)
-	if(isalienadult(user) && user.a_intent == "hurt")
+	if(isxenoadult(user) && user.a_intent == "hurt")
 		user.do_attack_animation(src)
 		user.SetNextMove(CLICK_CD_MELEE)
 		health -= rand(40, 60)
@@ -323,6 +323,6 @@
 		else
 			user.visible_message("<span class='danger'>[user] claws at the resin!</span>")
 		CheckHealth()
-	else if(isalien(user) && !isSwitchingStates)
+	else if(isxeno(user) && !isSwitchingStates)
 		add_fingerprint(user)
 		SwitchState()

@@ -27,7 +27,7 @@
 	if(!check_rights(R_VAREDIT))	return
 
 	if(is_type_in_list(O, VE_PROTECTED_TYPES))
-		to_chat(usr, "\red It is forbidden to edit this object's variables.")
+		to_chat(usr, "<span class='warning'>It is forbidden to edit this object's variables.</span>")
 		return
 
 	var/list/names = list()
@@ -51,13 +51,16 @@
 	var/dir
 
 	if(variable in VE_MASS_FULLY_LOCKED)
-		to_chat(usr, "\red It is forbidden to edit this variable.")
+		to_chat(usr, "<span class='warning'>It is forbidden to edit this variable.</span>")
 		return
 
 	if((variable in VE_MASS_DEBUG) && !check_rights(R_DEBUG))
 		return
 
 	if((variable in VE_MASS_ICONS) && !check_rights(R_DEBUG|R_EVENT))
+		return
+
+	if((variable in VE_HIDDEN_LOG) && !check_rights(R_LOG))
 		return
 
 	if(isnull(var_value))

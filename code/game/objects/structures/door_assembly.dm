@@ -87,7 +87,7 @@
 
 	else if(iswirecutter(W) && state == ASSEMBLY_WIRED)
 		if(user.is_busy()) return
-		playsound(src, 'sound/items/Wirecutter.ogg', 100, 1)
+		playsound(src, 'sound/items/Wirecutter.ogg', VOL_EFFECTS_MASTER)
 		user.visible_message("[user] cuts the wires from the airlock assembly.", "You start to cut the wires from airlock assembly.")
 
 		if(W.use_tool(src, user, 40, volume = 50))
@@ -98,7 +98,7 @@
 	else if(istype(W, /obj/item/weapon/airlock_electronics) && state == ASSEMBLY_WIRED)
 		var/obj/item/weapon/airlock_electronics/AE = W
 		if(!AE.broken && !user.is_busy())
-			playsound(src, 'sound/items/Screwdriver.ogg', 100, 1)
+			playsound(src, 'sound/items/Screwdriver.ogg', VOL_EFFECTS_MASTER)
 			user.visible_message("[user] installs the electronics into the airlock assembly.", "You start to install electronics into the airlock assembly.")
 
 			if(W.use_tool(src, user, 40, volume = 50))
@@ -129,7 +129,7 @@
 					to_chat(user, "<span class='notice'>There is already glass in the [src].</span>")
 				else if(can_insert_glass)
 					if(user.is_busy()) return
-					playsound(src, 'sound/items/Crowbar.ogg', 100, 1)
+					playsound(src, 'sound/items/Crowbar.ogg', VOL_EFFECTS_MASTER)
 					user.visible_message("[user] adds [S.name] to the [src].", "You start to install [S.name] into the [src].")
 					if(W.use_tool(src, user, 40, amount = 1, volume = 100))
 						to_chat(user, "<span class='notice'>You installed reinforced glass windows into the [src]!</span>")
@@ -143,7 +143,7 @@
 					if(S.get_amount() >= 2)
 						if(user.is_busy(src))
 							return
-						playsound(src, 'sound/items/Crowbar.ogg', 100, 1)
+						playsound(src, 'sound/items/Crowbar.ogg', VOL_EFFECTS_MASTER)
 						user.visible_message("[user] adds [S.name] to the airlock assembly.", "You start to install [S.name] into the airlock assembly.")
 						if(S.use_tool(src, user, 40, amount = 2, volume = 100))
 							to_chat(user, "<span class='notice'>You installed [M] plating into the airlock assembly!</span>")
@@ -168,7 +168,7 @@
 			door.assembly_type = type
 			door.electronics = electronics
 			if(electronics.one_access)
-				door.req_access = null
+				door.req_access = list()
 				door.req_one_access = electronics.conf_access
 			else
 				door.req_access = electronics.conf_access
@@ -240,9 +240,9 @@
 	name = general_state_text + glass_state_text + mineral_state_text + initial(name)
 
 /obj/structure/door_assembly/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(!glass_material)
-		overlays += get_airlock_overlay("fill_construction", icon)
+		add_overlay(get_airlock_overlay("fill_construction", icon))
 	else
-		overlays += get_airlock_overlay("[glass_material]_construction", overlays_file)
-	overlays += get_airlock_overlay("panel_c[state + 1]", overlays_file)
+		add_overlay(get_airlock_overlay("[glass_material]_construction", overlays_file))
+	add_overlay(get_airlock_overlay("panel_c[state + 1]", overlays_file))

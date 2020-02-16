@@ -46,7 +46,7 @@
 	if(occupant)
 		occupant_message("The sleeper is already occupied")
 		return
-	if(istype(target, /mob/living/carbon/alien))
+	if(istype(target, /mob/living/carbon/xenomorph))
 		occupant_message("Warning! Unauthorized life form detected!")
 		return
 	for(var/mob/living/carbon/slime/M in range(1,target))
@@ -466,7 +466,7 @@
 	syringes -= S
 	S.icon = 'icons/obj/chemical.dmi'
 	S.icon_state = "syringeproj"
-	playsound(chassis, 'sound/items/syringeproj.ogg', 50, 1)
+	playsound(chassis, 'sound/items/syringeproj.ogg', VOL_EFFECTS_MASTER)
 	log_message("Launched [S] from [src], targeting [target].")
 	spawn(-1)
 		src = null //if src is deleted, still process the syringe

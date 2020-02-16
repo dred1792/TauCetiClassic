@@ -162,6 +162,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	icon_state = "lantern"
 	item_state = "lantern"
 	desc = "A mining lantern."
+	button_sound = 'sound/items/lantern.ogg'
 	brightness_on = 4			// luminosity when on
 
 /*****************************Pickaxe********************************/
@@ -216,6 +217,9 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	origin_tech = "materials=4;phorontech=3;engineering=3"
 	desc = "A rock cutter that uses bursts of hot plasma. You could use it to cut limbs off of xenos! Or, you know, mine stuff."
 	drill_verb = "cutting"
+
+/obj/item/weapon/pickaxe/plasmacutter/get_current_temperature()
+	return 3800
 
 /obj/item/weapon/pickaxe/diamond
 	name = "diamond pickaxe"
@@ -280,7 +284,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	m_amt = 3750
 	attack_verb = list("hit", "pierced", "sliced", "attacked")
 	usesound = 'sound/items/drill.ogg'
-	hitsound = 'sound/items/drill_hit.ogg'
+	hitsound = list('sound/items/drill_hit.ogg')
 	drill_verb = "drill"
 	toolspeed = 0.6
 	var/drill_cost = 15
@@ -428,7 +432,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 		loc = null
 		var/location
 		location = target
-		target.overlays += image('icons/obj/mining/explosives.dmi', "charge_basic_armed")
+		target.add_overlay(image('icons/obj/mining/explosives.dmi', "charge_basic_armed"))
 		to_chat(user, "<span class='notice'>Charge has been planted. Timer counting down from </span>[timer]")
 		spawn(timer*10)
 			for(var/turf/simulated/mineral/M in view(get_turf(target), blast_range))
@@ -467,15 +471,15 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 /obj/item/weapon/gun/energy/kinetic_accelerator/emp_act(severity)
 	return
 
-/obj/item/weapon/gun/energy/kinetic_accelerator/attack_self(mob/living/user/L)
+/obj/item/weapon/gun/energy/kinetic_accelerator/attack_self(mob/user)
 	if(overheat || recent_reload)
 		return
 	power_supply.give(500)
 	if(!silenced)
-		playsound(src.loc, 'sound/weapons/guns/kenetic_reload.ogg', 60, 1)
+		playsound(src, 'sound/weapons/guns/kenetic_reload.ogg', VOL_EFFECTS_MASTER)
 	else
-		to_chat(usr, "<span class='warning'>You silently charge [src].</span>")
-	recent_reload = 1
+		to_chat(user, "<span class='warning'>You silently charge [src].</span>")
+	recent_reload = TRUE
 	update_icon()
 	return
 
@@ -495,6 +499,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	var/power = 4
 
 /obj/item/projectile/kinetic/atom_init()
+	. = ..()
 	var/turf/proj_turf = get_turf(src)
 	if(!istype(proj_turf, /turf))
 		return INITIALIZE_HINT_QDEL
@@ -503,7 +508,6 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	if(pressure < 50)
 		name = "full strength kinetic force"
 		damage *= 4
-	. = ..()
 
 /obj/item/projectile/kinetic/Range()
 	range--
@@ -511,7 +515,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 		new /obj/item/effect/kinetic_blast(src.loc)
 		qdel(src)
 
-/obj/item/projectile/kinetic/on_hit(atom/target)
+/obj/item/projectile/kinetic/on_hit(atom/target, def_zone = BP_CHEST, blocked = 0)
 	. = ..()
 	var/turf/target_turf = get_turf(target)
 	if(istype(target_turf, /turf/simulated/mineral))
@@ -536,8 +540,8 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 /*****************************Survival Pod********************************/
 
 
-/area/survivalpod
-	name = "\improper Emergency Shelter"
+/area/custom/survivalpod
+	name = "Emergency Shelter"
 	icon_state = "away"
 	requires_power = 0
 	dynamic_lighting = DYNAMIC_LIGHTING_FORCED
@@ -576,7 +580,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	get_template()
 	if(!used)
 		var/turf/T = get_turf(src)
-		if((T.z != ZLEVEL_ASTEROID) && (T.z != ZLEVEL_JUNKYARD) && !istype(T.loc, /area/space)  && !istype(T.loc, /area/shuttle)) //we don't need complete all checks
+		if(!is_mining_level(T.z) && !is_junkyard_level(T.z) && !istype(T.loc, /area/space)  && !istype(T.loc, /area/shuttle)) //we don't need complete all checks
 			src.loc.visible_message("<span class='warning'>You must use shelter at asteroid or in space! Grab this shit \
 			and shut up!</span>")
 			used = TRUE
@@ -585,7 +589,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 			new /obj/item/weapon/storage/firstaid/small_firstaid_kit/civilian(T)
 			new /obj/item/clothing/suit/space/cheap(T)
 			new /obj/item/clothing/head/helmet/space/cheap(T)
-			playsound(T, 'sound/effects/sparks2.ogg', 100, 1)
+			playsound(T, 'sound/effects/sparks2.ogg', VOL_EFFECTS_MASTER)
 		else
 			src.loc.visible_message("<span class='warning'>\The [src] begins \
 				to shake. Stand back!</span>")
@@ -609,9 +613,9 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 				used = FALSE
 				return
 
-			playsound(T, 'sound/effects/phasein.ogg', 100, 1)
+			playsound(T, 'sound/effects/phasein.ogg', VOL_EFFECTS_MASTER)
 
-			if(T.z != ZLEVEL_ASTEROID)//only report capsules away from the mining level
+			if(!is_mining_level(T.z))//only report capsules away from the mining level
 				message_admins("[key_name_admin(usr)] [ADMIN_QUE(usr)] [ADMIN_FLW(usr)] activated a bluespace capsule away from the mining level! [ADMIN_JMP(T)]")
 				log_admin("[key_name(usr)] activated a bluespace capsule away from the mining level at [T.x], [T.y], [T.z]")
 			template.load(T, centered = TRUE)
@@ -798,7 +802,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 		if(iswrench(O))
 			if(user.is_busy(src))
 				return
-			to_chat(user, "\blue You start to disassemble the storage unit...")
+			to_chat(user, "<span class='notice'>You start to disassemble the storage unit...</span>")
 			if(O.use_tool(src, user, 20, volume = 50))
 				qdel(src)
 			return
@@ -833,7 +837,7 @@ var/mining_shuttle_location = 0 // 0 = station 13, 1 = mining station
 	if(iswrench(W) && !(flags&NODECONSTRUCT))
 		if(user.is_busy(src))
 			return
-		playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
+		playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 		user.visible_message("<span class='warning'>[user] disassembles the fan.</span>", \
 						"<span class='notice'>You start to disassemble the fan...</span>", "You hear clanking and banging noises.")
 		if(W.use_tool(src, user, 20, volume = 50))

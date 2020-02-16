@@ -138,7 +138,7 @@
 	var/result = step(src,direction)
 	if(result)
 		if(!squeak)
-			playsound(src, "clownstep", 70, 1)
+			playsound(src, pick(SOUNDIN_CLOWNSTEP), VOL_EFFECTS_MASTER)
 			squeak = 1
 		else
 			squeak = 0
@@ -149,14 +149,5 @@
 	if (href_list["play_sound"])
 		switch(href_list["play_sound"])
 			if("sadtrombone")
-				playsound(src, 'sound/misc/sadtrombone.ogg', 50)
+				playsound(src, 'sound/misc/sadtrombone.ogg', VOL_EFFECTS_MASTER)
 	return
-
-/proc/rand_hex_color()
-	var/list/colors = list("0","1","2","3","4","5","6","7","8","9","a","b","c","d","e","f")
-	var/color=""
-	for (var/i=0;i<6;i++)
-		color = color+pick(colors)
-	return color
-
-

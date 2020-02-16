@@ -28,7 +28,7 @@ field_generator power level display
 	icon_state = "Field_Gen"
 	anchored = FALSE
 	density = TRUE
-	use_power = 0
+	use_power = NO_POWER_USE
 
 	var/var_edit_start = FALSE
 	var/var_power      = FALSE
@@ -49,18 +49,18 @@ field_generator power level display
 	return ..()
 
 /obj/machinery/field_generator/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if(warming_up)
-		overlays += "+a[warming_up]"
+		add_overlay("+a[warming_up]")
 	if(LAZYLEN(fields))
-		overlays += "+on"
+		add_overlay("+on")
 	// Power level indicator
 	// Scale % power to % FG_POWER_LEVELS and truncate value
 	var/level = round(FG_POWER_LEVELS * power / FG_MAX_POWER)
 	// Clamp between 0 and FG_POWER_LEVELS for out of range power values
 	level = between(0, level, FG_POWER_LEVELS)
 	if(level)
-		overlays += "+p[level]"
+		add_overlay("+p[level]")
 
 /obj/machinery/field_generator/process()
 	if(var_edit_start)
@@ -72,7 +72,7 @@ field_generator power level display
 			warming_up = 3
 			start_fields()
 			update_icon()
-			playsound(src, 'sound/machines/cfieldstart.ogg', 100, 0)
+			playsound(src, 'sound/machines/cfieldstart.ogg', VOL_EFFECTS_MASTER, null, FALSE)
 		var_edit_start = FALSE
 
 	if(active == FG_ONLINE)
@@ -95,8 +95,8 @@ field_generator power level display
 					"<span class='notice'>You turn on the [src].</span>",
 					"<span class='notice'>You hear heavy droning.</span>")
 				turn_on()
-				playsound(src, 'sound/machines/cfieldbeforestart.ogg', 100, 0)
-				investigate_log("<font color='green'>activated</font> by [user.key].","singulo")
+				playsound(src, 'sound/machines/cfieldbeforestart.ogg', VOL_EFFECTS_MASTER, null, FALSE)
+				log_investigate("<font color='green'>activated</font> by [key_name(user)].",INVESTIGATE_SINGULO)
 	else
 		to_chat(user, "<span class='notice'>The [src] needs to be firmly secured to the floor first.</span>")
 		return 1
@@ -109,7 +109,7 @@ field_generator power level display
 		switch(state)
 			if(FG_UNSECURED)
 				state = FG_SECURED
-				playsound(src, 'sound/items/Ratchet.ogg', 75, 1)
+				playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 				user.visible_message(
 					"<span class='notice'>[user] secures [src] to the floor.</span>",
 					"<span class='notice'>You secure the external reinforcing bolts to the floor.</span>",
@@ -117,7 +117,7 @@ field_generator power level display
 				anchored = TRUE
 			if(FG_SECURED)
 				state = FG_UNSECURED
-				playsound(src, 'sound/items/Ratchet.ogg', 75, 1)
+				playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 				user.visible_message(
 					"<span class='notice'>[user] unsecures [src] reinforcing bolts from the floor.</span>",
 					"<span class='notice'>You undo the external reinforcing bolts.</span>",
@@ -198,7 +198,7 @@ field_generator power level display
 		update_icon()
 		if(warming_up >= 3)
 			start_fields()
-			playsound(src, 'sound/machines/cfieldstart.ogg', 100, 1)
+			playsound(src, 'sound/machines/cfieldstart.ogg', VOL_EFFECTS_MASTER)
 
 /obj/machinery/field_generator/proc/calc_power()
 	if(var_power)
@@ -210,8 +210,8 @@ field_generator power level display
 	if(!draw_power(round(power_draw / 2, 1)))
 		visible_message("<span class='warning'>The [src] shuts down!</span>")
 		turn_off()
-		playsound(src, 'sound/machines/cfieldfail.ogg', 100, 0)
-		investigate_log("ran out of power and <font color='red'>deactivated</font>","singulo")
+		playsound(src, 'sound/machines/cfieldfail.ogg', VOL_EFFECTS_MASTER, null, FALSE)
+		log_investigate("ran out of power and <font color='red'>deactivated</font>",INVESTIGATE_SINGULO)
 		power = 0
 
 // This could likely be better, it tends to start loopin if you have a complex generator loop setup.
@@ -332,7 +332,7 @@ field_generator power level display
 			if((world.time - O.last_warning) > 50) //to stop message-spam
 				temp = FALSE
 				message_admins("<span class='danger'>A singulo exists and a containment field has failed. [ADMIN_JMP(O)]</span>")
-				investigate_log("has <font color='red'>failed</font> whilst a singulo exists.","singulo")
+				log_investigate("has <font color='red'>failed</font> whilst a singulo exists.",INVESTIGATE_SINGULO)
 		O.last_warning = world.time
 
 

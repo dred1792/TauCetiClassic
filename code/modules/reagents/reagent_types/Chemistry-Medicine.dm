@@ -21,7 +21,7 @@
 		if(15 to 25)
 			M.drowsyness  = max(M.drowsyness, 20)
 		if(25 to INFINITY)
-			M.sleeping += 1
+			M.SetSleeping(20 SECONDS)
 			M.adjustOxyLoss(-M.getOxyLoss())
 			M.SetWeakened(0)
 			M.SetStunned(0)
@@ -172,7 +172,7 @@
 /datum/reagent/dermaline/on_general_digest(mob/living/M)
 	..()
 	M.heal_bodypart_damage(0,3 * REM)
-	if(volume >= overdose && HUSK in M.mutations && ishuman(M))
+	if(volume >= overdose && (HUSK in M.mutations) && ishuman(M))
 		var/mob/living/carbon/human/H = M
 		H.mutations.Remove(HUSK)
 		H.update_body()
@@ -257,6 +257,23 @@
 	M.hallucination = max(0, M.hallucination - 5 * REM)
 	M.adjustToxLoss(-2 * REM)
 
+/datum/reagent/thermopsis
+	name = "Thermopsis"
+	id = "thermopsis"
+	description = "Irritates stomach receptors, that leads to reflex rise of vomiting."
+	reagent_state = LIQUID
+	color = "#a0a000"
+	taste_message = "vomit"
+	restrict_species = list(IPC, DIONA)
+	data = 1
+
+/datum/reagent/thermopsis/on_general_digest(mob/living/M)
+	..()
+	data++
+	if(data > 10)
+		M.vomit()
+		data -= rand(0, 10)
+
 /datum/reagent/adminordrazine //An OP chemical for admins
 	name = "Adminordrazine"
 	id = "adminordrazine"
@@ -287,7 +304,7 @@
 	M.drowsyness = 0
 	M.stuttering = 0
 	M.confused = 0
-	M.sleeping = 0
+	M.SetSleeping(0)
 	M.jitteriness = 0
 	for(var/datum/disease/D in M.viruses)
 		D.spread = "Remissive"
@@ -431,6 +448,8 @@
 		H.apply_effect(3, WEAKEN)
 		H.apply_damages(0,0,1,4,0,5)
 		H.regen_bodyparts(4, FALSE)
+	else
+		volume += 0.07
 
 /datum/reagent/bicaridine
 	name = "Bicaridine"
@@ -515,7 +534,12 @@
 		if(15 to 35)
 			M.adjustCloneLoss(-2)
 			M.heal_bodypart_damage(2, 1)
-			M.status_flags &= ~DISFIGURED
+			if(ishuman(M))
+				var/mob/living/carbon/human/H = M
+				var/obj/item/organ/external/head/BP = H.bodyparts_by_name[BP_HEAD]
+				if(BP && BP.disfigured)
+					BP.disfigured = FALSE
+					to_chat(M, "Your face is shaped normally again.")
 		if(35 to INFINITY)
 			M.adjustToxLoss(1)
 			M.make_dizzy(5)
@@ -584,3 +608,23 @@
 	..()
 	M.nutrition = max(M.nutrition - nutriment_factor, 0)
 	M.overeatduration = 0
+
+/datum/reagent/stimulants
+	name = "Stimulants"
+	id = "stimulants"
+	description = "Stimulants to keep you up in a critical moment"
+	reagent_state = LIQUID
+	color = "#99ccff" // rgb: 200, 165, 220
+	custom_metabolism = 0.5
+	overdose = REAGENTS_OVERDOSE
+	restrict_species = list(IPC, DIONA)
+
+/datum/reagent/stimulants/on_general_digest(mob/living/M)
+	..()
+	M.drowsyness = max(M.drowsyness - 5, 0)
+	M.AdjustParalysis(-3)
+	M.AdjustStunned(-3)
+	M.AdjustWeakened(-3)
+	var/mob/living/carbon/human/H = M
+	H.adjustHalLoss(-30)
+	H.shock_stage -= 20

@@ -9,7 +9,7 @@
 	hydroponictray_icon_path = 'icons/obj/xenoarchaeology/prehistoric_plants.dmi'
 	species = "telriis"
 	plantname = "Telriis grass"
-	productname = "/obj/item/weapon/telriis_clump"
+	productname = "/obj/item/weapon/reagent_containers/food/snacks/grown/telriis_clump"
 	lifespan = 50    //number of ticks
 	endurance = 50
 	maturation = 5   //ticks to full growth stage
@@ -246,14 +246,14 @@
 	reagents.add_reagent("nutriment", 5)
 	bitesize = 3
 
-/obj/item/weapon/reagent_containers/food/snacks/grown/blackberry/throw_impact(atom/hit_atom)
+/obj/item/weapon/reagent_containers/food/snacks/grown/blackberry/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	..()
 	var/obj/effect/decal/cleanable/new_smudge
 	new_smudge = new /obj/effect/decal/cleanable/egg_smudge(loc)
 	new_smudge.icon_state = "smashed_blackberry"
 	reagents.reaction(hit_atom, TOUCH)
 	visible_message("<span class='rose'>\The [src.name] has been squashed.</span>", "<span class='rose'>You hear a smack.</span>")
-	playsound(src.loc, 'sound/effects/splat.ogg', 50, 1, -3)
+	playsound(src, 'sound/effects/splat.ogg', VOL_EFFECTS_MASTER, null, null, -3)
 	new /obj/effect/spider/spiderling(src.loc)
 	qdel(src)
 

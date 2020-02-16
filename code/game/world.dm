@@ -1,12 +1,11 @@
 var/round_id = 0
+var/base_commit_sha = 0
 
-#define RECOMMENDED_VERSION 511
+#define RECOMMENDED_VERSION 512
 /world/New()
-	//logs
-	var/date_string = time2text(world.realtime, "YYYY/MM-Month/DD-Day")
-	href_logfile = file("data/logs/[date_string] hrefs.htm")
-	diary = file("data/logs/[date_string].log")
-	diary << "[log_end]\n[log_end]\nStarting up. [time2text(world.timeofday, "hh:mm.ss")][log_end]\n---------------------[log_end]"
+#ifdef DEBUG
+	enable_debugger()
+#endif
 
 	if(byond_version < RECOMMENDED_VERSION)
 		world.log << "Your server's byond version does not meet the recommended requirements for this server. Please update BYOND"
@@ -19,18 +18,17 @@ var/round_id = 0
 	load_mode()
 	load_last_mode()
 	load_motd()
+	load_host_announcements()
 	load_test_merge()
 	load_admins()
 	load_mentors()
-	if(config.allow_donators)
-		load_donators()
+	load_supporters()
 	if(config.usewhitelist)
 		load_whitelist()
 	if(config.usealienwhitelist)
 		load_whitelistSQL()
 	load_proxy_whitelist()
 	LoadBans()
-	investigate_reset()
 
 	spawn
 		changelog_hash = trim(get_webpage(config.changelog_hash_link))
@@ -39,23 +37,12 @@ var/round_id = 0
 		// dumb and hardcoded but I don't care~
 		config.server_name += " #[(world.port % 1000) / 100]"
 
-	if(config && config.log_runtime)
-		log = file("data/logs/runtime/[time2text(world.realtime,"YYYY-MM-DD-(hh-mm-ss)")]-runtime.log")
-
-	//announce with slap, round log without
-	world.send2bridge(
-		type = list(BRIDGE_ANNOUNCE),
-		attachment_title = "Server starting up, new round will start soon",
-		attachment_msg = "Join now: <[BYOND_JOIN_LINK]>",
-		attachment_color = BRIDGE_COLOR_ANNOUNCE,
-		mention = BRIDGE_MENTION_ROUNDSTART,
-	)
-	
 	world.send2bridge(
 		type = list(BRIDGE_ROUNDSTAT),
 		attachment_title = "Server starting up, new round will start soon",
 		attachment_msg = "Join now: <[BYOND_JOIN_LINK]>",
 		attachment_color = BRIDGE_COLOR_ANNOUNCE,
+		mention = BRIDGE_MENTION_ROUNDSTART,
 	)
 
 	radio_controller = new /datum/controller/radio()
@@ -67,23 +54,22 @@ var/round_id = 0
 		Master.Setup()
 
 	if(!setup_old_database_connection())
-		world.log << "Your server failed to establish a connection with the SQL database."
+		log_sql("Your server failed to establish a connection with the SQL database.")
 	else
-		world.log << "SQL database connection established."
+		log_sql("SQL database connection established.")
 
 	if(!setup_database_connection())
-		world.log << "Your server failed to establish a connection with the feedback database."
+		log_sql("Your server failed to establish a connection with the feedback database.")
 	else
-		world.log << "Feedback database connection established."
+		log_sql("Feedback database connection established.")
 
 	SetRoundID()
+	base_commit_sha = GetGitMasterCommit(1)
+	SetupLogs() // depends on round id
 
 	Get_Holiday()
 
 	src.update_status()
-
-	process_teleport_locs()			//Sets up the wizard teleport locations
-	process_ghost_teleport_locs()	//Sets up ghost teleport locations.
 
 	. = ..()
 
@@ -91,38 +77,58 @@ var/round_id = 0
 	log_unit_test("Unit Tests Enabled. This will destroy the world when testing is complete.")
 #endif
 
-	spawn(3000)		//so we aren't adding to the round-start lag
-		if(config.kick_inactive)
+	if(config.kick_inactive)
+		spawn(15 MINUTES)
 			KickInactiveClients()
 
 #undef RECOMMENDED_VERSION
 
-	return
+/world/proc/SetupLogs()
+	var/log_suffix = round_id ? round_id : replacetext(time_stamp(), ":", ".")
+	var/log_date = time2text(world.realtime, "YYYY/MM/DD")
+	
+	global.log_directory = "data/logs/[log_date]/round-[log_suffix]"
+	global.log_investigate_directory = "[log_directory]/investigate"
+	global.log_debug_directory = "[log_directory]/debug"
 
-//world/Topic(href, href_list[])
-//		world << "Received a Topic() call!"
-//		world << "[href]"
-//		for(var/a in href_list)
-//			world << "[a]"
-//		if(href_list["hello"])
-//			world << "Hello world!"
-//			return "Hello world!"
-//		world << "End of Topic() call."
-//		..()
+	global.game_log = file("[log_directory]/game.log")
+	global.hrefs_log = file("[log_directory]/href.log")
+	global.access_log = file("[log_directory]/access.log")
+
+	global.initialization_log = file("[log_debug_directory]/initialization.log")
+	global.runtime_log = file("[log_debug_directory]/runtime.log")
+	global.qdel_log  = file("[log_debug_directory]/qdel.log")
+	global.sql_error_log = file("[log_debug_directory]/sql.log")
+
+	round_log("Server starting up")
+
+	var/debug_rev_message = ""
+	if(base_commit_sha)
+		debug_rev_message += "Base SHA: [base_commit_sha]\n[log_end]"
+
+	if(fexists("test_merge.txt"))
+		debug_rev_message += "TM: [trim(file2text("test_merge.txt"))]\n[log_end]"
+
+	if(length(debug_rev_message))
+		info(debug_rev_message)
+		log_runtime(debug_rev_message)
 
 var/world_topic_spam_protect_ip = "0.0.0.0"
 var/world_topic_spam_protect_time = world.timeofday
 
 /world/Topic(T, addr, master, key)
-	diary << "TOPIC: \"[T]\", from:[addr], master:[master], key:[key][log_end]"
 
 	if (T == "ping")
+		log_href("WTOPIC: \"[T]\", from:[addr], master:[master], key:[key]")
+
 		var/x = 1
 		for (var/client/C)
 			x++
 		return x
 
 	else if(T == "players")
+		log_href("WTOPIC: \"[T]\", from:[addr], master:[master], key:[key]")
+
 		var/n = 0
 		for(var/mob/M in player_list)
 			if(M.client)
@@ -130,6 +136,8 @@ var/world_topic_spam_protect_time = world.timeofday
 		return n
 
 	else if (T == "status")
+		log_href("WTOPIC: \"[T]\", from:[addr], master:[master], key:[key]")
+
 		var/list/s = list()
 		s["version"] = game_version
 		s["mode"] = custom_event_msg ? "event" : master_mode
@@ -142,6 +150,10 @@ var/world_topic_spam_protect_time = world.timeofday
 		s["stationtime"] = worldtime2text()
 		s["gamestate"] = ticker.current_state
 		s["roundduration"] = roundduration2text()
+		s["map_name"] = SSmapping.config?.map_name || "Loading..."
+		s["popcap"] = config.client_limit_panic_bunker_count ? config.client_limit_panic_bunker_count : 0
+		s["round_id"] = round_id
+		s["revision"] = base_commit_sha
 		var/n = 0
 		var/admins = 0
 
@@ -157,94 +169,33 @@ var/world_topic_spam_protect_time = world.timeofday
 		s["admins"] = admins
 
 		return list2params(s)
+	
+	else if (length(T) && istext(T))
+		var/list/packet_data = params2list(T)
+		if (packet_data && packet_data["announce"] == "")
+			return receive_net_announce(packet_data, addr)
 
-	else if(copytext(T,1,9) == "adminmsg")
-		/*
-			We got an adminmsg from IRC bot lets split the input then validate the input.
-			expected output:
-				1. adminmsg = ckey of person the message is to
-				2. msg = contents of message, parems2list requires
-				3. validatationkey = the key the bot has, it should match the gameservers commspassword in it's configuration.
-				4. sender = the ircnick that send the message.
-		*/
+	else
+		log_href("WTOPIC: \"[T]\", from:[addr], master:[master], key:[key]")
 
-
-		var/input[] = params2list(T)
-		if(input["key"] != config.comms_password)
-			if(world_topic_spam_protect_ip == addr && abs(world_topic_spam_protect_time - world.time) < 50)
-
-				spawn(50)
-					world_topic_spam_protect_time = world.time
-					return "Bad Key (Throttled)"
-
-			world_topic_spam_protect_time = world.time
-			world_topic_spam_protect_ip = addr
-
-			return "Bad Key"
-
-		var/client/C
-
-		for(var/client/K in clients)
-			if(K.ckey == input["adminmsg"])
-				C = K
-				break
-		if(!C)
-			return "No client with that name on server"
-
-		var/message =	"<font color='red'>IRC-Admin PM from <b><a href='?irc_msg=1'>[C.holder ? "IRC-" + input["sender"] : "Administrator"]</a></b>: [input["msg"]]</font>"
-		var/amessage =  "<font color='blue'>IRC-Admin PM from <a href='?irc_msg=1'>IRC-[input["sender"]]</a> to <b>[key_name(C)]</b> : [input["msg"]]</font>"
-
-		C.received_irc_pm = world.time
-		C.irc_admin = input["sender"]
-
-		send_sound(C, 'sound/effects/adminhelp.ogg')
-		to_chat(C, message)
-
-
-		for(var/client/A in admins)
-			if(A != C)
-				to_chat(A, amessage)
-
-		return "Message Successful"
-
-	else if(copytext(T,1,6) == "notes")
-		/*
-			We got a request for notes from the IRC Bot
-			expected output:
-				1. notes = ckey of person the notes lookup is for
-				2. validationkey = the key the bot has, it should match the gameservers commspassword in it's configuration.
-		*/
-		var/input[] = params2list(T)
-		if(input["key"] != config.comms_password)
-			if(world_topic_spam_protect_ip == addr && abs(world_topic_spam_protect_time - world.time) < 50)
-
-				spawn(50)
-					world_topic_spam_protect_time = world.time
-					return "Bad Key (Throttled)"
-
-			world_topic_spam_protect_time = world.time
-			world_topic_spam_protect_ip = addr
-			return "Bad Key"
-
-		return show_player_info_irc(input["notes"])
-
-
-
-
-
-/world/Reboot(reason = 0, end_state)
+/world/proc/PreShutdown(end_state)
 
 	if(dbcon.IsConnected())
 		end_state = end_state ? end_state : "undefined"
 		var/DBQuery/query_round_shutdown = dbcon.NewQuery("UPDATE erro_round SET shutdown_datetime = Now(), end_state = '[sanitize_sql(end_state)]' WHERE id = [round_id]")
 		query_round_shutdown.Execute()
 
+		dbcon.Disconnect()
+
+	if(dbcon_old.IsConnected())
+		dbcon_old.Disconnect()
+
 	world.log << "Runtimes count: [total_runtimes]. Runtimes skip count: [total_runtimes_skipped]."
 
 	// Bad initializations log.
 	var/initlog = SSatoms.InitLog()
 	if(initlog)
-		world.log << initlog
+		log_initialization(initlog)
 
 	// Adds the del() log to world.log in a format condensable by the runtime condenser found in tools
 	var/list/dellog = list()
@@ -267,14 +218,25 @@ var/world_topic_spam_protect_time = world.timeofday
 			dellog += "\tIgnored force: [I.no_respect_force] times"
 		if (I.no_hint)
 			dellog += "\tNo hint: [I.no_hint] times"
-	world.log << dellog.Join("\n")
+	if(dellog.len)
+		log_qdel(dellog.Join("\n"))
+
+
+
+var/shutdown_processed = FALSE
+
+/world/Reboot(reason = 0, end_state)
+	PreShutdown(end_state)
 
 	for(var/client/C in clients)
 		//if you set a server location in config.txt, it sends you there instead of trying to reconnect to the same world address. -- NeoFite
 		C << link(BYOND_JOIN_LINK)
-	
-	if(fexists("scripts/hooks/round_end.sh")) //nevermind, we drop windows support for this things a little
-		var/list/O = world.shelleo("scripts/hooks/round_end.sh")
+
+	round_log("Reboot [end_state ? ", [end_state]" : ""]")
+	shutdown_processed = TRUE
+
+	if(fexists("scripts/hooks/round_reboot.sh")) //nevermind, we drop windows support for this things a little
+		var/list/O = world.shelleo("scripts/hooks/round_reboot.sh")
 		if(O[SHELLEO_ERRORLEVEL])
 			world.log << O[SHELLEO_STDERR]
 		else
@@ -282,19 +244,20 @@ var/world_topic_spam_protect_time = world.timeofday
 
 	..()
 
-#define INACTIVITY_KICK	6000	//10 minutes in ticks (approx.)
+/world/Del()
+	if(!shutdown_processed) //if SIGTERM signal, not restart/reboot
+		PreShutdown("Graceful shutdown")
+		round_log("Graceful shutdown")
+
+	..()
+
 /world/proc/KickInactiveClients()
-	spawn(-1)
-		//set background = 1
-		while(1)
-			sleep(INACTIVITY_KICK)
-			for(var/client/C in clients)
-				if(C.is_afk(INACTIVITY_KICK))
-					if(!istype(C.mob, /mob/dead))
-						log_access("AFK: [key_name(C)]")
-						to_chat(C, "<span class='userdanger'>You have been inactive for more than 10 minutes and have been disconnected.</span>")
-						del(C)
-#undef INACTIVITY_KICK
+	for (var/client/C in clients)
+		if (!(C.holder || C.supporter) && C.is_afk())
+			log_access("AFK: [key_name(C)]")
+			to_chat(C, "<span class='userdanger'>You have been inactive for more than [config.afk_time_bracket / 600] minutes and have been disconnected.</span>")
+			QDEL_IN(C, 2 SECONDS)
+	addtimer(CALLBACK(GLOBAL_PROC, .proc/KickInactiveClients), 5 MINUTES)
 
 /world/proc/load_stealth_keys()
 	var/list/keys_list = file2list("config/stealth_keys.txt")
@@ -329,6 +292,22 @@ var/world_topic_spam_protect_time = world.timeofday
 /world/proc/load_motd()
 	join_motd = file2text("config/motd.txt")
 
+/world/proc/load_host_announcements()
+	var/list/files = flist("data/announcements/")
+
+	host_announcements = "" // reset in case of reload
+
+	if(files.len)
+
+		for(var/file in files)
+
+			if(length(host_announcements))
+				host_announcements += "<hr>"
+
+			host_announcements += trim(file2text("data/announcements/[file]"))
+		
+		host_announcements = "<h2>Important Admin Announcements:</h2><br>[host_announcements]"
+
 /world/proc/load_test_merge()
 	if(fexists("test_merge.txt"))
 		join_test_merge = "<strong>Test merged PRs:</strong> "
@@ -353,16 +332,35 @@ var/world_topic_spam_protect_time = world.timeofday
 			var/active_hours_left = num2text((active_until - world.realtime) / 36000, 1)
 			log_game("Round with registration panic bunker! Panic age: [config.registration_panic_bunker_age]. Enabled by [enabled_by]. Active hours left: [active_hours_left]")
 
-/world/proc/load_donators()
-	if(!fexists("config/donators.txt"))
-		return
-	var/L = file2list("config/donators.txt")
-	for(var/line in L)
-		if(!length(line))
-			continue
-		if(copytext(line,1,2) == "#")
-			continue
-		donators.Add(ckey(line))
+/world/proc/load_supporters()
+	if(config.allow_donators && fexists("config/donators.txt"))
+		var/L = file2list("config/donators.txt")
+		for(var/line in L)
+			if(!length(line))
+				continue
+			if(copytext(line,1,2) == "#")
+				continue
+			donators.Add(ckey(line))
+
+	// just some tau ceti specific stuff
+	if(config.allow_tauceti_patrons)
+		var/w = get_webpage("https://taucetistation.org/patreon/json")
+		if(!w)
+			warning("Failed to load taucetistation.org patreon list")
+			message_admins("Failed to load taucetistation.org patreon list, please inform responsible persons")
+		else
+			var/list/l = json2list(w)
+			for(var/i in l)
+				if(l[i]["reward_price"] == "5.00")
+					donators.Add(ckey(l[i]["name"]))
+
+	for(var/client/C in clients)
+		C.update_supporter_status()
+
+/client/proc/update_supporter_status()
+	if(ckey in donators || config.allow_byond_membership && IsByondMember())
+		supporter = 1
+
 
 /world/proc/load_proxy_whitelist()
 	if(!fexists("config/proxy_whitelist.txt"))
@@ -381,6 +379,8 @@ var/world_topic_spam_protect_time = world.timeofday
 	config.load("config/config.txt")
 	config.load("config/game_options.txt","game_options")
 	config.loadsql("config/dbconfig.txt")
+	config.loadmaplist("config/maps.txt")
+	config.load_announcer_config("config/announcer")
 	// apply some settings from config..
 	abandon_allowed = config.respawn
 
@@ -530,3 +530,111 @@ var/failed_old_db_connections = 0
 		return 1
 
 #undef FAILED_DB_CONNECTION_CUTOFF
+
+/world/proc/incrementMaxZ()
+	maxz++
+
+// This proc reads the current git commit number of a master branch
+/proc/GetGitMasterCommit(no_head = 0)
+	var/commitFile = ".git/refs/remotes/origin/master"
+	if(fexists(commitFile) == 0)
+		info("GetMasterGitCommit() File not found ([commitFile]), using HEAD as a current commit")
+		return no_head ? 0 : "HEAD"
+
+	var/text = trim(file2text(commitFile))
+	if(!text)
+		info("GetMasterGitCommit() File is empty ([commitFile]), using HEAD as a current commit")
+		return no_head ? 0 : "HEAD"
+
+	return text
+
+// Net announce
+#define NET_ANNOUNCE_BAN "ban"
+
+/world/proc/send_net_announce(type, list/msg)
+	// get associated list for message
+	// return associated list with key as server url when receive somthing
+	var/list/response = list()
+	if (length(global.net_announcer_secret) < 2 || !length(msg) || !istext(type) || !length(type))
+		return response
+	var/cargo = list2params(msg)
+	if (!length(cargo))
+		return response
+	for(var/i in 2 to length(global.net_announcer_secret))
+		var/server = global.net_announcer_secret[i]
+		response[server] = world.Export(text("[]?announce&secret=[]&type=[]&[]", server, global.net_announcer_secret[server], type, cargo))
+	return response
+
+/world/proc/send_ban_announce(ckey = null, ip = null, cid = null)
+	if (!config.net_announcers["ban_send"])
+		return FALSE
+	var/list/data = list()
+	if (ckey)
+		data["ckey"] = ckey
+	if (ip)
+		data["ip"] = ip
+	if (cid)
+		data["cid"] = cid
+	if (length(data))
+		var/list/received_data = send_net_announce(NET_ANNOUNCE_BAN, data)
+		for(var/R in received_data)
+			var/number_kicked = text2num(received_data[R])
+			if (number_kicked)
+				message_admins("Kicked [number_kicked] player(s) on [R]")
+		return TRUE
+	return FALSE
+
+/world/proc/receive_net_announce(list/packet_data, sender)
+	// validate message from /world/Topic
+	// actions in proccess_net_announce
+	if (
+		!length(global.net_announcer_secret) || \
+		!islist(packet_data) || \
+		packet_data["announce"] != "" || \
+		!istext(packet_data["secret"]) || !length(packet_data["secret"]) || \
+		!istext(packet_data["type"]) || !length(packet_data["type"])
+	)
+		return
+	var/self = global.net_announcer_secret[1]
+	if (!self || packet_data["secret"] != global.net_announcer_secret[self])
+		// log_misc("Unauthorized connection for net_announce [sender]")
+		return
+	return proccess_net_announce(packet_data["type"], packet_data, sender)
+
+/world/proc/proccess_net_announce(type, list/data, sender)
+	var/self_flag = FALSE
+	if (sender == ("127.0.0.1:[world.port]"))
+		self_flag = TRUE
+	switch(type)
+		if (NET_ANNOUNCE_BAN)
+			// legacy system use files, we need DB for ban check
+			if (config.net_announcers["ban_receive"] && !self_flag && config && !config.ban_legacy_system)
+				return proccess_ban_announce(data, sender)
+	return
+
+/world/proc/proccess_ban_announce(list/data, sender, self)
+	var/list/to_kick = list()
+	for (var/mob/M in global.player_list)
+		var/list/ban_key = list()
+		if (data["ckey"] && M.ckey && M.ckey == data["ckey"])
+			ban_key += "ckey([data["ckey"]])"
+		if (data["cid"] && M.computer_id && M.computer_id == data["cid"])
+			ban_key += "cid([data["cid"]])"
+		if (data["ip"] && M.client && M.client.address && M.client.address == data["ip"])
+			ban_key += "ip([data["ip"]])"
+		if (length(ban_key))
+			var/banned = world.IsBanned(data["ckey"], data["ip"],  data["cid"])
+			if (banned && banned["reason"] && banned["desc"])
+				to_kick[M] = banned["desc"]
+				var/notify = text("Player [] kicked by ban announce from []. Reason: []. Matched [].", M.ckey, sender, banned["reason"], ban_key.Join(", "))
+				// message_admins(notify)
+				log_admin(notify)
+	for (var/mob/K in to_kick)
+		if (K.client)
+			// Message queue sometimes slow, setup 2 seconds delay
+			to_chat(K, "<span class='warning'><BIG><B>You kicked from the server.</B></BIG></span>")
+			to_chat(K, "<span class='warning'>[to_kick[K]]</span>")
+			QDEL_IN(K.client, 20)
+	return length(to_kick)
+
+#undef NET_ANNOUNCE_BAN

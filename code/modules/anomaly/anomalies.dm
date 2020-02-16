@@ -18,7 +18,7 @@
 	aSignal.code = rand(1,100)
 
 	aSignal.frequency = rand(1200, 1599)
-	if(IsMultiple(aSignal.frequency, 2))//signaller frequencies are always uneven!
+	if(IS_MULTIPLE(aSignal.frequency, 2))//signaller frequencies are always uneven!
 		aSignal.frequency++
 
 
@@ -123,6 +123,9 @@
 		T.assume_gas("phoron", 30)
 		T.hotspot_expose(1000, CELL_VOLUME)
 
+
+/obj/effect/anomaly/pyro/get_current_temperature()
+	return 1000
 
 /////////////////////
 

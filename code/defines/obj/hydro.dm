@@ -11,12 +11,30 @@
 	icon_state = "hydro"
 	item_state = "plantanalyzer"
 
+	var/output_to_chat = TRUE
+
 /obj/item/device/plant_analyzer/attack_self(mob/user)
 	return FALSE
 
+/obj/item/device/plant_analyzer/verb/toggle_output()
+	set name = "Toggle Output"
+	set category = "Object"
+
+	output_to_chat = !output_to_chat
+	if(output_to_chat)
+		to_chat(usr, "The scanner now outputs data to chat.")
+	else
+		to_chat(usr, "The scanner now outputs data in a seperate window.")
+
 /obj/item/device/plant_analyzer/attack(mob/living/carbon/human/M, mob/living/user)
-	if(M.species && M.species.flags[IS_PLANT])
-		health_analyze(M, user, TRUE) // 1 means limb-scanning mode
+	if(istype(M) && M.species.flags[IS_PLANT])
+		add_fingerprint(user)
+		var/dat = health_analyze(M, user, TRUE, output_to_chat) // TRUE means limb-scanning mode
+		if(output_to_chat)
+			user << browse(entity_ja(dat), "window=[M.name]_scan_report;size=400x400;can_resize=1")
+			onclose(user, "[M.name]_scan_report")
+		else
+			to_chat(user, dat)
 
 // ********************************************************
 // Here's all the seeds (plants) that can be used in hydro
@@ -46,13 +64,13 @@
 /obj/item/seeds/attackby(obj/item/O, mob/user)
 	if (istype(O, /obj/item/device/plant_analyzer))
 		to_chat(user, "*** <B>[plantname]</B> ***")
-		to_chat(user, "-Plant Endurance: \blue [endurance]")
-		to_chat(user, "-Plant Lifespan: \blue [lifespan]")
+		to_chat(user, "-Plant Endurance: <span class='notice'>[endurance]</span>")
+		to_chat(user, "-Plant Lifespan: <span class='notice'>[lifespan]</span>")
 		if(yield != -1)
-			to_chat(user, "-Plant Yield: \blue [yield]")
-		to_chat(user, "-Plant Production: \blue [production]")
+			to_chat(user, "-Plant Yield: <span class='notice'>[yield]</span>")
+		to_chat(user, "-Plant Production: <span class='notice'>[production]</span>")
 		if(potency != -1)
-			to_chat(user, "-Plant Potency: \blue [potency]")
+			to_chat(user, "-Plant Potency: <span class='notice'>[potency]</span>")
 		user.SetNextMove(CLICK_CD_INTERACT)
 		return
 	..() // Fallthrough to item/attackby() so that bags can pick seeds up
@@ -230,6 +248,24 @@
 	species = "banana"
 	plantname = "Banana Tree"
 	productname = "/obj/item/weapon/reagent_containers/food/snacks/grown/banana"
+	lifespan = 50
+	endurance = 30
+	maturation = 6
+	production = 6
+	yield = 3
+	plant_type = 0
+	growthstages = 6
+	mutatelist = list(/obj/item/seeds/honkyseed)
+
+/obj/item/seeds/honkyseed
+	name = "pack of honk-banana seeds"
+	desc = "They're seeds that grow into banana trees."
+	icon_state = "seed-banana-honk"
+	mypath = "/obj/item/seeds/honkyseed"
+	hydroponictray_icon_path = 'icons/obj/hydroponics/growing_fruits.dmi'
+	species = "honk"
+	plantname = "Honk banana Tree"
+	productname = "/obj/item/weapon/reagent_containers/food/snacks/grown/banana/honk"
 	lifespan = 50
 	endurance = 30
 	maturation = 6
@@ -1192,7 +1228,7 @@
 /obj/item/weapon/grown/log/attackby(obj/item/weapon/W, mob/user)
 	user.SetNextMove(CLICK_CD_INTERACT)
 	if(istype(W, /obj/item/weapon/circular_saw) || istype(W, /obj/item/weapon/hatchet) || (istype(W, /obj/item/weapon/twohanded/fireaxe) && W:wielded) || istype(W, /obj/item/weapon/melee/energy))
-		user.show_message("<span class='notice'>You make planks out of \the [src]!</span>", 1)
+		to_chat(user, "<span class='notice'>You make planks out of \the [src]!</span>")
 		for(var/i in 1 to 2)
 			new/obj/item/stack/sheet/wood(user.loc)
 		qdel(src)
@@ -1235,7 +1271,7 @@
 		force = round((5 + potency / 5), 1)
 
 /obj/item/weapon/grown/deathnettle
-	desc = "The \red glowing \black nettle incites \red<B>rage</B>\black in you just from looking at it!"
+	desc = "The <span class='warning'>glowing</span> nettle incites <span class='warning'><B>rage</B></span> in you just from looking at it!"
 	icon = 'icons/obj/weapons.dmi'
 	name = "deathnettle"
 	icon_state = "deathnettle"
@@ -1258,7 +1294,7 @@
 		force = round((5 + potency / 2.5), 1)
 
 /obj/item/weapon/grown/deathnettle/suicide_act(mob/user)
-	to_chat(viewers(user), "\red <b>[user] is eating some of the [src.name]! It looks like \he's trying to commit suicide.</b>")
+	to_chat(viewers(user), "<span class='warning'><b>[user] is eating some of the [src.name]! It looks like \he's trying to commit suicide.</b></span>")
 	return (BRUTELOSS | TOXLOSS)
 
 // *************************************
@@ -1318,7 +1354,7 @@
 	var/WeedKillStr = 2
 
 /obj/item/weapon/weedspray/suicide_act(mob/user)
-	to_chat(viewers(user), "\red <b>[user] is huffing the [src.name]! It looks like \he's trying to commit suicide.</b>")
+	to_chat(viewers(user), "<span class='warning'><b>[user] is huffing the [src.name]! It looks like \he's trying to commit suicide.</b></span>")
 	return (TOXLOSS)
 
 /obj/item/weapon/pestspray // -- Skie
@@ -1337,7 +1373,7 @@
 	var/PestKillStr = 2
 
 /obj/item/weapon/pestspray/suicide_act(mob/user)
-	to_chat(viewers(user), "\red <b>[user] is huffing the [src.name]! It looks like \he's trying to commit suicide.</b>")
+	to_chat(viewers(user), "<span class='warning'><b>[user] is huffing the [src.name]! It looks like \he's trying to commit suicide.</b></span>")
 	return (TOXLOSS)
 
 /obj/item/weapon/minihoe // -- Numbers

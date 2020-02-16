@@ -42,7 +42,7 @@
 					wearable = 1
 
 			if(!wearable && (slot != SLOT_L_STORE && slot != SLOT_R_STORE)) //Pockets.
-				to_chat(M, "\red Your species cannot wear [src].")
+				to_chat(M, "<span class='warning'>Your species cannot wear [src].</span>")
 				return 0
 
 	return 1
@@ -190,6 +190,7 @@ BLIND     // can't see anything
 	var/protect_fingers = TRUE // Are we gonna get hurt when searching in the trash piles
 	body_parts_covered = ARMS
 	slot_flags = SLOT_FLAGS_GLOVES
+	hitsound = list('sound/items/misc/glove-slap.ogg')
 	attack_verb = list("challenged")
 	species_restricted = list("exclude" , UNATHI , TAJARAN)
 	sprite_sheets = list(VOX = 'icons/mob/species/vox/gloves.dmi')
@@ -244,7 +245,6 @@ BLIND     // can't see anything
 	permeability_coefficient = 0.50
 	slowdown = SHOES_SLOWDOWN
 	species_restricted = list("exclude" , UNATHI , TAJARAN)
-	var/footstep = 1	//used for squeeks whilst walking(tc)
 	sprite_sheets = list(VOX = 'icons/mob/species/vox/shoes.dmi')
 
 //Cutting shoes
@@ -252,7 +252,7 @@ BLIND     // can't see anything
 	if(iswirecutter(W) || istype(W, /obj/item/weapon/scalpel))
 		switch(clipped_status)
 			if(CLIPPABLE)
-				playsound(src.loc, 'sound/items/Wirecutter.ogg', 100, 1)
+				playsound(src, 'sound/items/Wirecutter.ogg', VOL_EFFECTS_MASTER)
 				user.visible_message("<span class='red'>[user] cuts the toe caps off of [src].</span>","<span class='red'>You cut the toe caps off of [src].</span>")
 
 				name = "mangled [name]"
@@ -269,6 +269,11 @@ BLIND     // can't see anything
 				to_chat(user, "<span class='notice'>[src] have already been clipped!</span>")
 	else
 		..()
+
+/obj/item/clothing/shoes/play_unique_footstep_sound()
+	..()
+	if(wet)
+		playsound(src, 'sound/effects/mob/footstep/wet_shoes_step.ogg', VOL_EFFECTS_MASTER)
 
 /obj/item/proc/negates_gravity()
 	return 0
@@ -436,11 +441,13 @@ BLIND     // can't see anything
 		return
 	A.on_removed(user)
 	accessories -= A
+	A.update_icon()
 	to_chat(user, "<span class='notice'>You remove [A] from [src].</span>")
 	if(istype(loc, /mob/living/carbon/human))
 		var/mob/living/carbon/human/H = loc
 		H.update_inv_w_uniform()
 		action_button_name = null
+
 
 /obj/item/clothing/under/attackby(obj/item/I, mob/user)
 	if(I.sharp && !ishuman(loc)) //you can cut only clothes lying on the floor
@@ -556,17 +563,13 @@ BLIND     // can't see anything
 	else if (istype(src.loc, /mob))
 		switch(sensor_mode)
 			if(0)
-				for(var/mob/V in viewers(usr, 1))
-					V.show_message("\red [usr] disables [src.loc]'s remote sensing equipment.", 1)
+				M.visible_message("<span class='warning'>[usr] disables [src.loc]'s remote sensing equipment.</span>", viewing_distance = 1)
 			if(1)
-				for(var/mob/V in viewers(usr, 1))
-					V.show_message("[usr] turns [src.loc]'s remote sensors to binary.", 1)
+				M.visible_message("[usr] turns [src.loc]'s remote sensors to binary.", viewing_distance = 1)
 			if(2)
-				for(var/mob/V in viewers(usr, 1))
-					V.show_message("[usr] sets [src.loc]'s sensors to track vitals.", 1)
+				M.visible_message("[usr] sets [src.loc]'s sensors to track vitals.", viewing_distance = 1)
 			if(3)
-				for(var/mob/V in viewers(usr, 1))
-					V.show_message("[usr] sets [src.loc]'s sensors to maximum.", 1)
+				M.visible_message("[usr] sets [src.loc]'s sensors to maximum.", viewing_distance = 1)
 
 /obj/item/clothing/under/verb/toggle()
 	set name = "Toggle Suit Sensors"

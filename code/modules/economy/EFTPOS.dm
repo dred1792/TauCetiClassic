@@ -3,7 +3,7 @@
 	desc = "Swipe your ID card to make purchases electronically."
 	icon = 'icons/obj/device.dmi'
 	icon_state = "eftpos"
-	hitsound = 'sound/items/defib_safetyOff.ogg'
+	hitsound = list('sound/items/surgery/defib_safetyOff.ogg')
 	var/machine_id = ""
 	var/eftpos_name = "Default EFTPOS scanner"
 	var/transaction_locked = 0
@@ -50,7 +50,7 @@
 
 	//stamp the paper
 	var/obj/item/weapon/stamp/centcomm/S = new
-	S.stamp_paper(R, "This paper has been stamped by the EFTPOS device.")
+	S.stamp_paper(R, "EFTPOS")
 
 	//by default, connect to the station account
 	//the user of the EFTPOS device can change the target account though, and no-one will be the wiser (except whoever's being charged)
@@ -67,11 +67,10 @@
 
 	//stamp the paper
 	var/obj/item/weapon/stamp/centcomm/S = new
-	S.stamp_paper(R, "This paper has been stamped by the EFTPOS device.")
+	S.stamp_paper(R, "EFTPOS")
 
 	var/obj/item/smallDelivery/D = new(R.loc)
 	R.loc = D
-	D.wrapped = R
 	D.name = "small parcel - 'EFTPOS access code'"
 
 /obj/item/device/eftpos/attack_self(mob/user)
@@ -115,7 +114,7 @@
 			if(!linked_account.suspended)
 				if(transaction_locked && !transaction_paid)
 					if(transaction_amount <= E.worth)
-						playsound(src, 'sound/machines/chime.ogg', 50, 1)
+						playsound(src, 'sound/machines/chime.ogg', VOL_EFFECTS_MASTER)
 						src.visible_message("[bicon(src)] The [src] chimes.")
 						transaction_paid = 1
 
@@ -225,7 +224,7 @@
 					if(D)
 						if(!D.suspended)
 							if(transaction_amount <= D.money)
-								playsound(src, 'sound/machines/chime.ogg', 50, 1)
+								playsound(src, 'sound/machines/chime.ogg', VOL_EFFECTS_MASTER)
 								src.visible_message("[bicon(src)] The [src] chimes.")
 								transaction_paid = 1
 
@@ -272,10 +271,8 @@
 				transaction_paid = 0
 			else
 				visible_message("<span class='info'>[usr] swipes a card through [src].</span>")
-				playsound(src, 'sound/machines/chime.ogg', 50, 1)
+				playsound(src, 'sound/machines/chime.ogg', VOL_EFFECTS_MASTER)
 				src.visible_message("[bicon(src)] The [src] chimes.")
 				transaction_paid = 1
-	else
-		..()
 
 	//emag?

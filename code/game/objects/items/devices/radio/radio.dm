@@ -182,7 +182,7 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 			updateDialog()
 	add_fingerprint(usr)
 
-/obj/item/device/radio/proc/autosay(message, from, channel) //BS12 EDIT
+/obj/item/device/radio/proc/autosay(message, from, channel, freq = 1459) //BS12 EDIT
 	var/datum/radio_frequency/connection = null
 	if(channel && channels && channels.len > 0)
 		if (channel == "department")
@@ -201,7 +201,7 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 	Broadcast_Message(connection, A,
 						0, "*garbled automated announcement*", src,
 						message, from, "Automated Announcement", from, "synthesized voice",
-						4, 0, list(1), 1459)
+						4, 0, SSmapping.levels_by_trait(ZTRAIT_STATION), freq)
 	qdel(A)
 	return
 
@@ -558,27 +558,27 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 				var/rendered = "[part_a][N][part_b][quotedmsg][part_c]"
 				for (var/mob/R in heard_masked)
 					if(istype(R, /mob/living/silicon/ai))
-						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[N] ([J]) </a>[part_b][quotedmsg][part_c]", 2)
+						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[N] ([J]) </a>[part_b][quotedmsg][part_c]", SHOWMSG_AUDIO)
 					else
-						R.show_message(rendered, 2)
+						R.show_message(rendered, SHOWMSG_AUDIO)
 
 			if (length(heard_normal))
 				var/rendered = "[part_a][M.real_name][part_b][quotedmsg][part_c]"
 
 				for (var/mob/R in heard_normal)
 					if(istype(R, /mob/living/silicon/ai))
-						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.real_name] ([eqjobname]) </a>[part_b][quotedmsg][part_c]", 2)
+						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.real_name] ([eqjobname]) </a>[part_b][quotedmsg][part_c]", SHOWMSG_AUDIO)
 					else
-						R.show_message(rendered, 2)
+						R.show_message(rendered, SHOWMSG_AUDIO)
 
 			if (length(heard_voice))
 				var/rendered = "[part_a][M.voice_name][part_b][pick(M.speak_emote)][part_c]"
 
 				for (var/mob/R in heard_voice)
 					if(istype(R, /mob/living/silicon/ai))
-						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.voice_name] ([eqjobname]) </a>[part_b][pick(M.speak_emote)][part_c]", 2)
+						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.voice_name] ([eqjobname]) </a>[part_b][pick(M.speak_emote)][part_c]", SHOWMSG_AUDIO)
 					else
-						R.show_message(rendered, 2)
+						R.show_message(rendered, SHOWMSG_AUDIO)
 
 			if (length(heard_garbled))
 				quotedmsg = M.say_quote(stars(message))
@@ -586,9 +586,9 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 
 				for (var/mob/R in heard_voice)
 					if(istype(R, /mob/living/silicon/ai))
-						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.voice_name]</a>[part_b][quotedmsg][part_c]", 2)
+						R.show_message("[part_a]<a href='byond://?src=\ref[src];track2=\ref[R];track=\ref[M]'>[M.voice_name]</a>[part_b][quotedmsg][part_c]", SHOWMSG_AUDIO)
 					else
-						R.show_message(rendered, 2)
+						R.show_message(rendered, SHOWMSG_AUDIO)
 
 /obj/item/device/radio/hear_talk(mob/M, msg, verb = "says", datum/language/speaking = null)
 
@@ -674,7 +674,7 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 	else if (isscrewdriver(W))
 		b_stat = !b_stat
 		add_fingerprint(user)
-		playsound(user, 'sound/items/Screwdriver.ogg', 50, 1)
+		playsound(user, 'sound/items/Screwdriver.ogg', VOL_EFFECTS_MASTER)
 		if(!istype(src, /obj/item/device/radio/beacon))
 			to_chat(user, "<span class='notice'>The radio can [b_stat ? "now" : "no longer"] be attached and modified!</span>")
 	else
@@ -843,7 +843,7 @@ var/GLOBAL_RADIO_TYPE = 1 // radio type to use
 	qdel(src)
 
 /obj/item/device/radio_grid/proc/dettach(obj/item/device/radio/radio)
-	playsound(src, 'sound/items/Wirecutter.ogg', 50, 1)
+	playsound(src, 'sound/items/Wirecutter.ogg', VOL_EFFECTS_MASTER)
 	if(prob(30))
 		radio.on = FALSE
 	radio.grid = FALSE

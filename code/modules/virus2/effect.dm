@@ -69,11 +69,11 @@
 
 			for(var/o in organs)
 				var/obj/item/organ/external/BP = H.get_bodypart(o)
-				if(BP && !(BP.status & ORGAN_ROBOT) && BP.is_usable())
+				if(BP && BP.is_flesh() && BP.is_usable())
 					infected_organ = BP
 					break
 
-		if(!infected_organ || (infected_organ.status & ORGAN_ROBOT) || (infected_organ.status & ORGAN_DESTROYED))
+		if(QDELETED(infected_organ) || !infected_organ || !infected_organ.is_flesh() || infected_organ.is_stump || !infected_organ.is_attached())
 			disease.dead = TRUE
 			to_chat(H, "<span class='notice'>You suddenly feel better.</span>")
 			return
@@ -109,7 +109,7 @@
 				if(!activated)
 					activated = TRUE
 					H.visible_message("<span class='danger'>[H] suddenly closes \his eyes. \His body falls lifeless and stops moving. \He seems to stop breathing.</span>")
-					H.sleeping = 600
+					H.SetSleeping(600 SECONDS)
 					handle_infected_death(H)
 					H.update_canmove()
 					disease.dead = TRUE
@@ -337,8 +337,6 @@
 		return 1
 	else if(M.stat == UNCONSCIOUS)
 		return 0.5
-	else if(M.sleeping > 0)
-		return 0.25
 	else if(M.getBruteLoss() + M.getFireLoss() >= 70 && !active_coma)
 		to_chat(M, "<span class='warning'>You feel yourself slip into a regenerative coma...</span>")
 		active_coma = TRUE
@@ -347,8 +345,7 @@
 /datum/disease2/effect/heal/coma/proc/coma(mob/living/carbon/human/M)
 	//M.emote("deathgasp")
 	M.status_flags |= FAKEDEATH
-	M.sleeping = 999 //Well, I hope its good enough
-	M.update_canmove()
+	M.SetSleeping(999 SECONDS) //Well, I hope its good enough
 	addtimer(CALLBACK(src, .proc/uncoma, M), 300)
 
 /datum/disease2/effect/heal/coma/proc/uncoma(mob/living/carbon/human/M)
@@ -356,8 +353,7 @@
 		return
 	active_coma = FALSE
 	M.status_flags &= ~FAKEDEATH
-	M.sleeping = 0
-	M.update_canmove()
+	M.SetSleeping(0)
 
 /datum/disease2/effect/heal/coma/heal(mob/living/carbon/human/M,datum/disease2/disease/disease, actual_power)
 	var/heal_amt = 4 * actual_power
@@ -501,7 +497,7 @@
 				var/mob/living/carbon/human/H = mob
 				var/bodypart = pick(list(BP_R_ARM , BP_L_ARM , BP_R_LEG , BP_L_LEG))
 				var/obj/item/organ/external/BP = H.bodyparts_by_name[bodypart]
-				if (BP && !(BP.status & ORGAN_DESTROYED))
+				if (BP && !(BP.is_stump))
 					mob.emote("scream",,, 1)
 					BP.droplimb(no_explode = FALSE, clean = FALSE, disintegrate = DROPLIMB_BLUNT)
 			else
@@ -594,7 +590,7 @@
 	else if(prob(20) || holder.stage == 2)
 		if(ishuman(mob))
 			var/mob/living/carbon/human/H = mob
-			H.vomit()
+			H.invoke_vomit_async()
 	else if(holder.stage == 3)
 		to_chat(mob, "<span class='userdanger'>[pick("Your stomach hurts.", "You feel a sharp abdominal pain.")]</span>")
 		mob.reagents.add_reagent(pick("plasticide", "toxin", "amatoxin", "phoron", "lexorin", "carpotoxin", "mindbreaker", "plantbgone", "fluorine"), round(rand(1,3), 1)) // some random toxin
@@ -938,7 +934,7 @@
 			if(prob(50))
 				mob.emote("collapse")
 			else
-				mob.sleeping = max(mob.sleeping, 5)
+				mob.SetSleeping(max(mob.AmountSleeping(), 5 SECONDS))
 
 /datum/disease2/effect/blind
 	name = "Hyphema"
@@ -1187,7 +1183,7 @@
 	level = 1
 
 /datum/disease2/effect/gunck/activate(mob/living/carbon/mob,datum/disease2/effectholder/holder,datum/disease2/disease/disease)
-	to_chat(mob, "\red Mucous runs down the back of your throat.")*/
+	to_chat(mob, "<span class='warning'>Mucous runs down the back of your throat.</span>")*/
 
 /datum/disease2/effect/drool
 	name = "Drooling"

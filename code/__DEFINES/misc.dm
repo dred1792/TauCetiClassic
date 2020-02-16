@@ -19,15 +19,6 @@
 #define GHOST_ORBIT_SQUARE		"square"
 #define GHOST_ORBIT_PENTAGON	"pentagon"
 
-//zlevel defines, can be overriden for different maps in the appropriate _maps file.
-#define ZLEVEL_STATION  	1
-#define ZLEVEL_CENTCOMM 	2 //EI NATH!!
-#define ZLEVEL_CENTCOM  	2
-#define ZLEVEL_TELECOMMS	3
-#define ZLEVEL_DERELICT		4
-#define ZLEVEL_ASTEROID 	5
-#define ZLEVEL_EMPTY	 	6
-
 #define TRANSITIONEDGE		7 //Distance from edge to move to another z-level
 
 #define ENGINE_EJECT_Z		3 //Unused now
@@ -58,7 +49,7 @@
 #define ROUNDSTART_LOGOUT_REPORT_TIME 6000 //Amount of time (in deciseconds) after the rounds starts, that the player disconnect report is issued.
 
 // Doors!
-#define DOOR_CRUSH_DAMAGE 10
+#define DOOR_CRUSH_DAMAGE 20
 
 #define FIREDOOR_MAX_PRESSURE_DIFF 25 // kPa
 
@@ -178,6 +169,8 @@
 
 // (Bay12 = -2), but we don't have that projectile code, so...
 #define PROJECTILE_FORCE_MISS -1
+#define PROJECTILE_ACTED 0 // it means that something else has took control of bullet_act() proc and it didn't run till the end.
+#define PROJECTILE_ALL_OK 3
 
 #define COORD(A) "([A.x],[A.y],[A.z])"
 
@@ -206,3 +199,36 @@
 #define CSS_THEME_DARK "theme_dark"
 
 #define BYOND_JOIN_LINK config.server ? "byond://[config.server]" : "byond://[world.address]:[world.port]"
+
+//Facehugger's control type
+#define FACEHUGGERS_STATIC_AI     0   // don't move by themselves
+#define FACEHUGGERS_DYNAMIC_AI    1   // controlled by simple AI
+#define FACEHUGGERS_PLAYABLE      2   // controlled by players
+
+//Time it takes to impregnate someone with facehugger
+#define MIN_IMPREGNATION_TIME 200
+#define MAX_IMPREGNATION_TIME 250
+
+#define DELAY2GLIDESIZE(delay) (world.icon_size / max(CEIL(delay / world.tick_lag), 1))
+
+#define PLASMAGUN_OVERCHARGE 30100
+
+//! ## Overlays subsystem
+
+///Compile all the overlays for an atom from the cache lists
+#define COMPILE_OVERLAYS(A)\
+	if (TRUE) {\
+		var/list/ad = A.add_overlays;\
+		var/list/rm = A.remove_overlays;\
+		if(LAZYLEN(rm)){\
+			A.overlays -= rm;\
+			rm.Cut();\
+		}\
+		if(LAZYLEN(ad)){\
+			A.overlays |= ad;\
+			ad.Cut();\
+		}\
+		A.flags_2 &= ~OVERLAY_QUEUED_2;\
+		if(isturf(A)){SSdemo.mark_turf(A);}\
+		if(isobj(A) || ismob(A)){SSdemo.mark_dirty(A);}\
+	}

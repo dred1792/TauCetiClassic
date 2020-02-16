@@ -17,14 +17,19 @@
 	)
 	minimal_player_age = 7
 	minimal_player_ingame_minutes = 2400
-	restricted_species = list(UNATHI, TAJARAN, DIONA, IPC)
+	restricted_species = list(UNATHI, TAJARAN, DIONA)
+
+	survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen/engi)
+
+	prevent_survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen)
 
 /datum/job/chief_engineer/equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	if(!H)	return 0
 	switch(H.backbag)
 		if(2) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/industrial(H), SLOT_BACK)
-		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
-		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
+		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/alt(H), SLOT_BACK)
+		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
+		if(5) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/rank/chief_engineer(H), SLOT_W_UNIFORM)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/workboots(H), SLOT_SHOES)
 	H.equip_to_slot_or_del(new /obj/item/clothing/head/hardhat/white(H), SLOT_HEAD)
@@ -54,14 +59,18 @@
 	alt_titles = list("Maintenance Technician","Engine Technician","Electrician")
 	minimal_player_age = 3
 	minimal_player_ingame_minutes = 540
-	restricted_species = list(IPC)
+
+	survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen/engi)
+
+	prevent_survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen)
 
 /datum/job/engineer/equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	if(!H)	return 0
 	switch(H.backbag)
 		if(2) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/industrial(H), SLOT_BACK)
-		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
-		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
+		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/alt(H), SLOT_BACK)
+		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
+		if(5) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/rank/engineer(H), SLOT_W_UNIFORM)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/workboots(H), SLOT_SHOES)
 	H.equip_to_slot_or_del(new /obj/item/weapon/storage/belt/utility/full(H), SLOT_BELT)
@@ -93,12 +102,17 @@
 	minimal_player_age = 3
 	minimal_player_ingame_minutes = 600
 
+	survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen/engi)
+
+	prevent_survival_kit_items = list(/obj/item/weapon/tank/emergency_oxygen)
+
 /datum/job/atmos/equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	if(!H)	return 0
 	switch(H.backbag)
 		if(2) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/industrial(H), SLOT_BACK)
-		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
-		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
+		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/alt(H), SLOT_BACK)
+		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
+		if(5) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/rank/atmospheric_technician(H), SLOT_W_UNIFORM)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/workboots(H), SLOT_SHOES)
 	H.equip_to_slot_or_del(new /obj/item/device/pda/atmos(H), SLOT_L_STORE)
@@ -125,15 +139,15 @@
 	access = list(access_engineering_lobby, access_construction, access_maint_tunnels)
 	minimal_player_age = 1
 	minimal_player_ingame_minutes = 200
-	restricted_species = list(IPC)
 
 /datum/job/technical_assistant/equip(mob/living/carbon/human/H, visualsOnly = FALSE)
 	if(!H)
 		return 0
 	switch(H.backbag)
 		if(2) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/industrial(H), SLOT_BACK)
-		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
-		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
+		if(3) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/alt(H), SLOT_BACK)
+		if(4) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel/eng(H), SLOT_BACK)
+		if(5) H.equip_to_slot_or_del(new /obj/item/weapon/storage/backpack/satchel(H), SLOT_BACK)
 	H.equip_to_slot_or_del(new /obj/item/clothing/under/color/yellow(H), SLOT_W_UNIFORM)
 	H.equip_to_slot_or_del(new /obj/item/clothing/shoes/yellow(H), SLOT_SHOES)
 

@@ -14,18 +14,18 @@
 	var/bantype_str
 	switch(bantype)
 		if(BANTYPE_PERMA)
-			bantype_str = "PERMABAN"
+			bantype_str = BANTYPE_PERMA_STR
 			duration = -1
 			bantype_pass = 1
 		if(BANTYPE_TEMP)
-			bantype_str = "TEMPBAN"
+			bantype_str = BANTYPE_TEMP_STR
 			bantype_pass = 1
 		if(BANTYPE_JOB_PERMA)
-			bantype_str = "JOB_PERMABAN"
+			bantype_str = BANTYPE_JOB_PERMA_STR
 			duration = -1
 			bantype_pass = 1
 		if(BANTYPE_JOB_TEMP)
-			bantype_str = "JOB_TEMPBAN"
+			bantype_str = BANTYPE_JOB_TEMP_STR
 			bantype_pass = 1
 	if( !bantype_pass ) return
 	if( !istext(reason) ) return
@@ -89,7 +89,7 @@
 	var/sql = "INSERT INTO erro_ban (`id`,`bantime`,`serverip`,`round_id`,`bantype`,`reason`,`job`,`duration`,`rounds`,`expiration_time`,`ckey`,`computerid`,`ip`,`a_ckey`,`a_computerid`,`a_ip`,`who`,`adminwho`,`edits`,`unbanned`,`unbanned_datetime`,`unbanned_ckey`,`unbanned_computerid`,`unbanned_ip`) VALUES (null, Now(), '[serverip]', [round_id], '[bantype_str]', '[reason]', '[job]', [(duration)?"[duration]":"0"], [(rounds)?"[rounds]":"0"], Now() + INTERVAL [(duration>0) ? duration : 0] MINUTE, '[ckey]', '[computerid]', '[ip]', '[a_ckey]', '[a_computerid]', '[a_ip]', '[who]', '[adminwho]', '', null, null, null, null, null)"
 	var/DBQuery/query_insert = dbcon.NewQuery(sql)
 	query_insert.Execute()
-	to_chat(usr, "\blue Ban saved to database.")
+	to_chat(usr, "<span class='notice'>Ban saved to database.</span>")
 	message_admins(msg)
 
 	world.send2bridge(
@@ -98,6 +98,9 @@
 		attachment_msg = "**[key_name(usr)]** [text("has added a **[]** for **[] [] []** with the reason: ***[]*** to the ban database.", bantype_str, ckey, (job ? "([job])" : ""), (duration > 0 ? "([duration] minutes)" : ""), text("[sanitize(reason)]"))]",
 		attachment_color = BRIDGE_COLOR_ADMINBAN,
 	)
+	if (bantype == BANTYPE_PERMA || bantype == BANTYPE_TEMP)
+		// servers use data from DB
+		world.send_ban_announce(ckey, ip, computerid)
 
 /datum/admins/proc/DB_ban_unban(ckey, bantype, job = "")
 
@@ -108,22 +111,22 @@
 		var/bantype_pass = 0
 		switch(bantype)
 			if(BANTYPE_PERMA)
-				bantype_str = "PERMABAN"
+				bantype_str = BANTYPE_PERMA_STR
 				bantype_pass = 1
 			if(BANTYPE_TEMP)
-				bantype_str = "TEMPBAN"
+				bantype_str = BANTYPE_TEMP_STR
 				bantype_pass = 1
 			if(BANTYPE_JOB_PERMA)
-				bantype_str = "JOB_PERMABAN"
+				bantype_str = BANTYPE_JOB_PERMA_STR
 				bantype_pass = 1
 			if(BANTYPE_JOB_TEMP)
-				bantype_str = "JOB_TEMPBAN"
+				bantype_str = BANTYPE_JOB_TEMP_STR
 				bantype_pass = 1
 			if(BANTYPE_ANY_FULLBAN)
-				bantype_str = "ANY"
+				bantype_str = BANTYPE_ANY_FULLBAN_STR
 				bantype_pass = 1
 			if(BANTYPE_ANY_JOB)
-				bantype_str = "ANYJOB"
+				bantype_str = BANTYPE_ANY_JOB_STR
 				bantype_pass = 1
 		if( !bantype_pass ) return
 
@@ -153,17 +156,17 @@
 		ban_number++;
 
 	if(ban_number == 0)
-		to_chat(usr, "\red Database update failed due to no bans fitting the search criteria. If this is not a legacy ban you should contact the database admin.")
+		to_chat(usr, "<span class='warning'>Database update failed due to no bans fitting the search criteria. If this is not a legacy ban you should contact the database admin.</span>")
 		return
 
 	if(ban_number > 1)
-		to_chat(usr, "\red Database update failed due to multiple bans fitting the search criteria. Note down the ckey, job and current time and contact the database admin.")
+		to_chat(usr, "<span class='warning'>Database update failed due to multiple bans fitting the search criteria. Note down the ckey, job and current time and contact the database admin.</span>")
 		return
 
 	if(istext(ban_id))
 		ban_id = text2num(ban_id)
 	if(!isnum(ban_id))
-		to_chat(usr, "\red Database update failed due to a ban ID mismatch. Contact the database admin.")
+		to_chat(usr, "<span class='warning'>Database update failed due to a ban ID mismatch. Contact the database admin.</span>")
 		return
 
 	DB_ban_unban_by_id(ban_id)
@@ -263,11 +266,11 @@
 		ban_number++;
 
 	if(ban_number == 0)
-		to_chat(usr, "\red Database update failed due to a ban id not being present in the database.")
+		to_chat(usr, "<span class='warning'>Database update failed due to a ban id not being present in the database.</span>")
 		return
 
 	if(ban_number > 1)
-		to_chat(usr, "\red Database update failed due to multiple bans having the same ID. Contact the database admin.")
+		to_chat(usr, "<span class='warning'>Database update failed due to multiple bans having the same ID. Contact the database admin.</span>")
 		return
 
 	if(!src.owner || !istype(src.owner, /client))
@@ -310,7 +313,7 @@
 
 	establish_db_connection()
 	if(!dbcon.IsConnected())
-		to_chat(usr, "\red Failed to establish database connection")
+		to_chat(usr, "<span class='warning'>Failed to establish database connection</span>")
 		return
 
 	var/output = "<div align='center'><table width='90%'><tr>"
@@ -584,3 +587,6 @@
 		attachment_msg = "**Tau Kitty** has added a **[bantype_str]** for **[ckey]** **[(job)?"([job])":""] [(duration > 0)?"([duration] minutes)":""]** with the reason: ***\"[reason]\"*** to the ban database.",
 		attachment_color = BRIDGE_COLOR_ADMINBAN,
 	)
+	if (bantype == BANTYPE_PERMA || bantype == BANTYPE_TEMP)
+		// servers use data from DB
+		world.send_ban_announce(ckey, ip, computerid)

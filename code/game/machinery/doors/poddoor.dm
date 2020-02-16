@@ -38,7 +38,7 @@
 	if(ismultitool(C) && hasPower() && !density)
 		var/obj/item/device/multitool/M = C
 		var/turf/turf = get_turf(src)
-		if(turf.z != ZLEVEL_STATION && turf.z != ZLEVEL_ASTEROID)
+		if(!is_station_level(turf.z) && !is_mining_level(turf.z))
 			to_chat(user, "<span class='warning'>This poddoor cannot be connected!</span>")
 		else if(src in M.poddoors_buffer)
 			to_chat(user, "<span class='warning'>This poddoor is already in the buffer!</span>")
@@ -62,22 +62,25 @@
 /obj/machinery/door/poddoor/do_open()
 	if(hasPower())
 		use_power(20)
-	playsound(src, door_open_sound, 100, 1)
+	playsound(src, door_open_sound, VOL_EFFECTS_MASTER)
 	do_animate("opening")
 	icon_state = icon_state_open
+	SSdemo.mark_dirty(src)
 	sleep(3)
 	explosion_resistance = 0
 	layer = base_layer
 	density = FALSE
 	set_opacity(FALSE)
 	update_nearby_tiles()
+	SSdemo.mark_dirty(src)
 
 /obj/machinery/door/poddoor/do_close()
 	if(hasPower())
 		use_power(20)
-	playsound(src, door_close_sound, 100, 1)
+	playsound(src, door_close_sound, VOL_EFFECTS_MASTER)
 	do_animate("closing")
 	icon_state = icon_state_close
+	SSdemo.mark_dirty(src)
 	sleep(3)
 	explosion_resistance = initial(explosion_resistance)
 	layer = base_layer + PODDOOR_CLOSED_MOD
@@ -85,6 +88,7 @@
 	set_opacity(TRUE)
 	do_afterclose()
 	update_nearby_tiles()
+	SSdemo.mark_dirty(src)
 
 /obj/machinery/door/poddoor/do_animate(animation)
 	switch(animation)

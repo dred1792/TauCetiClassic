@@ -18,7 +18,7 @@
 	name = "wrench"
 	desc = "A wrench with many common uses. Can be usually found in your hand."
 	icon = 'icons/obj/tools.dmi'
-	icon_state = "wrench_map"
+	icon_state = "wrench_blue"
 	flags = CONDUCT
 	slot_flags = SLOT_FLAGS_BELT
 	force = 5.0
@@ -26,6 +26,7 @@
 	w_class = ITEM_SIZE_SMALL
 	m_amt = 150
 	origin_tech = "materials=1;engineering=1"
+	hitsound = list('sound/items/tools/crowbar-hit.ogg')
 	attack_verb = list("bashed", "battered", "bludgeoned", "whacked")
 	usesound = 'sound/items/Ratchet.ogg'
 	var/random_color = TRUE
@@ -41,6 +42,7 @@
 /obj/item/weapon/wrench/power
 	name = "Hand Drill"
 	desc ="A simple powered drill with a bolt bit"
+	hitsound = list('sound/items/tools/tool-hit.ogg')
 	icon_state = "drill_bolt"
 	item_state = "drill"
 	materials = list(MAT_METAL=150, MAT_SILVER=50)
@@ -53,7 +55,7 @@
 	random_color = FALSE
 
 /obj/item/weapon/wrench/power/attack_self(mob/user)
-	playsound(user, 'sound/items/change_drill.ogg', 50, 1)
+	playsound(user, 'sound/items/change_drill.ogg', VOL_EFFECTS_MASTER)
 	var/obj/item/weapon/screwdriver/power/s_drill = new
 	to_chat(user, "<span class='notice'>You attach the screw driver bit to [src].</span>")
 	qdel(src)
@@ -66,7 +68,7 @@
 	name = "screwdriver"
 	desc = "You can be totally screwwy with this."
 	icon = 'icons/obj/tools.dmi'
-	icon_state = "screwdriver_map"
+	icon_state = "screwdriver_blue"
 	flags = CONDUCT
 	slot_flags = SLOT_FLAGS_BELT
 	force = 5.0
@@ -76,6 +78,7 @@
 	throw_range = 5
 	g_amt = 0
 	m_amt = 75
+	hitsound = list('sound/items/tools/screwdriver-stab.ogg')
 	attack_verb = list("stabbed")
 	usesound = 'sound/items/Screwdriver.ogg'
 	var/random_color = TRUE
@@ -109,6 +112,7 @@
 /obj/item/weapon/screwdriver/power
 	name = "Hand Drill"
 	desc = "A simple hand drill with a screwdriver bit attached."
+	hitsound = list('sound/items/drill_hit.ogg')
 	icon_state = "drill_screw"
 	item_state = "drill"
 	materials = list(MAT_METAL=150, MAT_SILVER=50)
@@ -119,12 +123,11 @@
 	throw_range = 3//it's heavier than a screw driver/wrench, so it does more damage, but can't be thrown as far
 	toolspeed = 0.7
 	attack_verb = list("drilled", "screwed", "jabbed","whacked")
-	hitsound = 'sound/items/drill_hit.ogg'
 	action_button_name = "Change mode"
 	random_color = FALSE
 
 /obj/item/weapon/screwdriver/power/attack_self(mob/user)
-	playsound(user, 'sound/items/change_drill.ogg', 50, 1)
+	playsound(user, 'sound/items/change_drill.ogg', VOL_EFFECTS_MASTER)
 	var/obj/item/weapon/wrench/power/b_drill = new
 	to_chat(user, "<span class='notice'>You attach the bolt driver bit to [src].</span>")
 	qdel(src)
@@ -136,7 +139,7 @@
 	name = "wirecutters"
 	desc = "This cuts wires."
 	icon = 'icons/obj/tools.dmi'
-	icon_state = "cutters_map"
+	icon_state = "cutters_blue"
 	flags = CONDUCT
 	slot_flags = SLOT_FLAGS_BELT
 	force = 6.0
@@ -145,6 +148,7 @@
 	w_class = ITEM_SIZE_SMALL
 	m_amt = 80
 	origin_tech = "materials=1;engineering=1"
+	hitsound = list('sound/items/tools/wirecutters-pinch.ogg')
 	attack_verb = list("pinched", "nipped")
 	sharp = 1
 	edge = 1
@@ -185,7 +189,7 @@
 	random_color = FALSE
 
 /obj/item/weapon/wirecutters/power/attack_self(mob/user)
-	playsound(user, 'sound/items/change_jaws.ogg', 50, 1)
+	playsound(user, 'sound/items/change_jaws.ogg', VOL_EFFECTS_MASTER)
 	var/obj/item/weapon/crowbar/power/pryjaws = new
 	to_chat(user, "<span class='notice'>You attach the pry jaws to [src].</span>")
 	qdel(src)
@@ -198,6 +202,7 @@
 	name = "welding tool"
 	desc = "Apply the hot spot to the metal."
 	icon = 'icons/obj/tools.dmi'
+	hitsound = 'sound/items/tools/tool-hit.ogg'
 	icon_state = "welder"
 	flags = CONDUCT
 	slot_flags = SLOT_FLAGS_BELT
@@ -293,7 +298,7 @@
 			return
 		//Welders left on now use up fuel, but lets not have them run out quite that fast
 		if(1)
-			hitsound = 'sound/items/Welder2.ogg'
+			hitsound = list('sound/items/Welder2.ogg')
 			if(src.icon_state != "welder1") //Check that the sprite is correct, if it isnt, it means toggle() was not called
 				src.force = 15
 				src.damtype = "fire"
@@ -326,10 +331,10 @@
 	if (istype(O, /obj/structure/reagent_dispensers/fueltank) && get_dist(src,O) <= 1 && !src.welding)
 		O.reagents.trans_to(src, max_fuel)
 		to_chat(user, "<span class='notice'>Welder refueled</span>")
-		playsound(src.loc, 'sound/effects/refill.ogg', 50, 1, -6)
+		playsound(src, 'sound/effects/refill.ogg', VOL_EFFECTS_MASTER, null, null, -6)
 		return
 	else if (istype(O, /obj/structure/reagent_dispensers/fueltank) && get_dist(src,O) <= 1 && src.welding)
-		message_admins("[key_name_admin(user)] triggered a fueltank explosion. (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)")
+		message_admins("[key_name_admin(user)] triggered a fueltank explosion. [ADMIN_JMP(user)]")
 		log_game("[key_name(user)] triggered a fueltank explosion.")
 		to_chat(user, "<span class='rose'>That was stupid of you.</span>")
 		var/obj/structure/reagent_dispensers/fueltank/tank = O
@@ -363,9 +368,14 @@
 /obj/item/weapon/weldingtool/proc/get_fuel()
 	return reagents.get_reagent_amount("fuel")
 
+/obj/item/weapon/weldingtool/tool_use_check(mob/living/user, amount)
+	return get_fuel() >= amount
 
 //Removes fuel from the welding tool. If a mob is passed, it will perform an eyecheck on the mob. This should probably be renamed to use()
 /obj/item/weapon/weldingtool/use(used = 1, mob/M = null)
+	if(used < 0)
+		stack_trace("[src.type]/use() called with a negative parameter [used]")
+		return 0
 	if(!welding || !check_fuel())
 		return 0
 	if(get_fuel() >= used)
@@ -383,12 +393,19 @@
 /obj/item/weapon/weldingtool/proc/isOn()
 	return src.welding
 
+/obj/item/weapon/weldingtool/get_current_temperature()
+	if(isOn())
+		return 3800
+	else
+		return 0
+
 //Sets the welding state of the welding tool. If you see W.welding = 1 anywhere, please change it to W.setWelding(1)
 //so that the welding tool updates accordingly
 /obj/item/weapon/weldingtool/proc/setWelding(temp_welding)
 	//If we're turning it on
 	if(temp_welding > 0)
 		if (use(1))
+			hitsound = list('sound/items/Welder2.ogg')
 			to_chat(usr, "<span class='info'>The [src] switches on.</span>")
 			src.force = 15
 			src.damtype = "fire"
@@ -400,6 +417,7 @@
 			return
 	//Otherwise
 	else
+		hitsound = initial(hitsound)
 		to_chat(usr, "<span class='info'>The [src] switches off.</span>")
 		src.force = 3
 		src.damtype = "brute"
@@ -422,6 +440,7 @@
 	if (src.welding)
 		if (use(1))
 			to_chat(usr, "<span class='notice'>You switch the [src] on.</span>")
+			hitsound = list('sound/items/Welder2.ogg')
 			src.force = 15
 			src.damtype = "fire"
 			src.icon_state = initial(src.icon_state) + "1"
@@ -435,6 +454,7 @@
 			to_chat(usr, "<span class='notice'>You switch the [src] off.</span>")
 		else
 			to_chat(usr, "<span class='info'>The [src] shuts off!</span>")
+		hitsound = initial(hitsound)
 		src.force = 3
 		src.damtype = "brute"
 		src.icon_state = initial(src.icon_state)
@@ -543,6 +563,7 @@
 	w_class = ITEM_SIZE_SMALL
 	m_amt = 50
 	origin_tech = "engineering=1"
+	hitsound = list('sound/items/tools/crowbar-hit.ogg')
 	attack_verb = list("attacked", "bashed", "battered", "bludgeoned", "whacked")
 	usesound = 'sound/items/Crowbar.ogg'
 
@@ -553,6 +574,7 @@
 /obj/item/weapon/crowbar/power
 	name = "Jaws of Life"
 	desc = "A set of jaws of life, the magic of science has managed to fit it down into a device small enough to fit in a tool belt. It's fitted with a prying head"
+	hitsound = list('sound/items/tools/tool-hit.ogg')
 	icon_state = "jaws_pry"
 	item_state = "jawsoflife"
 	materials = list(MAT_METAL=150, MAT_SILVER=50)
@@ -562,7 +584,7 @@
 	action_button_name = "Change mode"
 
 /obj/item/weapon/crowbar/power/attack_self(mob/user)
-	playsound(user, 'sound/items/change_jaws.ogg', 50, 1)
+	playsound(user, 'sound/items/change_jaws.ogg', VOL_EFFECTS_MASTER)
 	var/obj/item/weapon/wirecutters/power/cutjaws = new
 	to_chat(user, "<span class='notice'>You attach the cutting jaws to [src].</span>")
 	qdel(src)
@@ -576,7 +598,7 @@
 		var/obj/item/organ/external/BP = H.get_bodypart(def_zone)
 		if(!BP)
 			return
-		if(!(BP.status & ORGAN_ROBOT) || user.a_intent != "help")
+		if(!(BP.is_robotic()) || user.a_intent != "help")
 			return ..()
 
 		if(H.species.flags[IS_SYNTHETIC])

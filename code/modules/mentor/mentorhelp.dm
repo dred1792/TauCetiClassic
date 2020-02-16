@@ -6,10 +6,10 @@
 		return
 
 	if(say_disabled)	//This is here to try to identify lag problems
-		to_chat(usr, "\red Speech is currently admin-disabled.")
+		to_chat(usr, "<span class='warning'>Speech is currently admin-disabled.</span>")
 		return
 
-	if(mob.mind && mob.mind.special_role)	//Mentors are just a players, so they shan't know gamemode from these ones who toggles all role prefs to yes
+	if(mob.mind && mob.mind.special_role && !(src in mentors))
 		to_chat(usr, "<font color='red'>You cannot ask mentors for help while being antag. File a ticket instead if you wish question this to admins.</font>")
 		return
 
@@ -36,8 +36,7 @@
 		if(R_ADMIN & X.holder.rights)
 			if(X.is_afk())
 				admin_number_afk++
-			if(X.prefs.toggles & SOUND_ADMINHELP)
-				send_sound(X, 'sound/effects/adminhelp.ogg')
+			X.mob.playsound_local(null, 'sound/effects/adminhelp.ogg', VOL_NOTIFICATIONS, vary = FALSE, ignore_environment = TRUE)
 			to_chat(X, "<font color=blue><b><font color=[colour]>[prefix]: </font>[get_options_bar(mob, 2, 1, 1, MHELP_REPLY, TRUE)][ai_found ? " (<A HREF='?_src_=holder;adminchecklaws=[ref_mob]'>CL</A>)" : ""]:</b> <span class='emojify linkify'>[msg]</span></font>")
 
 	var/mentor_number_afk = 0
@@ -47,7 +46,7 @@
 			mentor_number_afk++
 		if(isobserver(X.mob))
 			jump = "(<A HREF='?src=\ref[X.mob];ghostplayerobservejump=[ref_mob]'>JMP</A>) "
-		send_sound(X, 'sound/effects/adminhelp.ogg')
+		X.mob.playsound_local(null, 'sound/effects/adminhelp.ogg', VOL_NOTIFICATIONS, vary = FALSE, ignore_environment = TRUE)
 		to_chat(X, "<font color=blue><b><font color=[colour]>[prefix]: </font>[key_name(src, 1, 0, 0, MHELP_REPLY, TRUE)][jump]:</b> <span class='emojify linkify'>[msg]</span></font>")
 
 	mentorhelped = TRUE //Determines if they get the message to reply by clicking the name.

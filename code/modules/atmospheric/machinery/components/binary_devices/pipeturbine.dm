@@ -58,19 +58,19 @@
 	update_parents()
 
 /obj/machinery/atmospherics/components/pipeturbine/update_icon()
-	overlays.Cut()
+	cut_overlays()
 	if (dP > 10)
-		overlays += image('icons/obj/pipeturbine.dmi', "moto-turb")
+		add_overlay(image('icons/obj/pipeturbine.dmi', "moto-turb"))
 	if (kin_energy > 100000)
-		overlays += image('icons/obj/pipeturbine.dmi', "low-turb")
+		add_overlay(image('icons/obj/pipeturbine.dmi', "low-turb"))
 	if (kin_energy > 500000)
-		overlays += image('icons/obj/pipeturbine.dmi', "med-turb")
+		add_overlay(image('icons/obj/pipeturbine.dmi', "med-turb"))
 	if (kin_energy > 1000000)
-		overlays += image('icons/obj/pipeturbine.dmi', "hi-turb")
+		add_overlay(image('icons/obj/pipeturbine.dmi', "hi-turb"))
 
 /obj/machinery/atmospherics/components/pipeturbine/attackby(obj/item/weapon/W, mob/user)
 	if(iswrench(W))
-		playsound(src.loc, 'sound/items/Ratchet.ogg', 75, 1)
+		playsound(src, 'sound/items/Ratchet.ogg', VOL_EFFECTS_MASTER)
 		anchored = !anchored
 		user.visible_message(
 			"[user.name] [anchored ? "secures" : "unsecures"] the bolts holding [src.name] to the floor.", \

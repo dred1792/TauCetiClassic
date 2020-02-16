@@ -54,7 +54,7 @@
 
 	if(((src in mentors) || holder) && !C.holder)
 		if(config.rus_language)
-			recieve_message = "<font color='[recieve_color]' size='3'><b>-- Нажмите на им[JA_PLACEHOLDER] [recieve_pm_type]'а дл[JA_PLACEHOLDER] ответа --</b></font>\n"
+			recieve_message = "<font color='[recieve_color]' size='3'><b>-- [text(CYRILLIC_MHELPCLICKNAME, recieve_pm_type)] --</b></font>\n"
 		else
 			recieve_message = "<font color='[recieve_color]' size='3'><b>-- Click the [recieve_pm_type]'s name to reply --</b></font>\n"
 		if(C.mentorhelped)
@@ -67,8 +67,7 @@
 
 	//play the recieving admin the adminhelp sound (if they have them enabled)
 	//non-admins shouldn't be able to disable this
-	if(C.prefs && C.prefs.toggles & SOUND_ADMINHELP)
-		send_sound(C, 'sound/effects/adminhelp.ogg')
+	C.mob.playsound_local(null, 'sound/effects/adminhelp.ogg', VOL_NOTIFICATIONS, vary = FALSE, ignore_environment = TRUE)
 
 	log_admin("PM: [key_name(src)]->[key_name(C)]: [msg]")
 	world.send2bridge(

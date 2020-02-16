@@ -8,7 +8,7 @@
 	var/deviation = 0 //Inaccuracy of shots.
 	var/fire_cooldown = 0 //Duration of sleep between firing projectiles in single shot.
 	var/fire_sound //Sound played while firing.
-	var/fire_volume = 50 //How loud it is played.
+	var/fire_volume = null //How loud it is played (null to use playsound's default value)
 	var/auto_rearm = 0 //Does the weapon reload itself after each shot?
 
 /obj/item/mecha_parts/mecha_equipment/weapon/can_attach(obj/mecha/combat/M)
@@ -38,7 +38,7 @@
 			aimloc = locate(targloc.x+GaussRandRound(deviation,1),targloc.y+GaussRandRound(deviation,1),targloc.z)
 		if(!aimloc || aimloc == curloc)
 			break
-		playsound(chassis, fire_sound, fire_volume, 1)
+		playsound(chassis, fire_sound, VOL_EFFECTS_MASTER, fire_volume)
 		projectiles--
 		var/P = new projectile(curloc)
 		Fire(P, target, aimloc)
@@ -145,7 +145,7 @@
 	if(!equip_ready)
 		return 0
 
-	playsound(chassis, 'sound/items/AirHorn.ogg', 100, 1)
+	playsound(chassis, 'sound/items/AirHorn.ogg', VOL_EFFECTS_MASTER)
 	chassis.occupant_message("<font color='red' size='5'>HONK</font>")
 	for(var/mob/living/carbon/M in ohearers(6, chassis))
 		if(istype(M, /mob/living/carbon/human))
@@ -153,7 +153,7 @@
 			if(istype(H.l_ear, /obj/item/clothing/ears/earmuffs) || istype(H.r_ear, /obj/item/clothing/ears/earmuffs))
 				continue
 		to_chat(M, "<font color='red' size='7'>HONK</font>")
-		M.sleeping = 0
+		M.SetSleeping(0)
 		M.stuttering += 20
 		M.ear_deaf += 30
 		M.Weaken(3)
@@ -203,7 +203,7 @@
 	return
 
 /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/carbine
-	name = "\improper FNX-66 Carbine"
+	name = "FNX-66 Carbine"
 	icon_state = "mecha_carbine"
 	equip_cooldown = 5
 	projectile = /obj/item/projectile/bullet/incendiary
@@ -217,7 +217,6 @@
 	equip_cooldown = 20
 	projectile = /obj/item/projectile/bullet/midbullet
 	fire_sound = 'sound/weapons/guns/gunshot_medium.ogg'
-	fire_volume = 80
 	projectiles = 40
 	projectiles_per_shot = 4
 	deviation = 0.7
@@ -262,7 +261,7 @@
 	var/primed = null
 	throwforce = 15
 
-/obj/item/missile/throw_impact(atom/hit_atom)
+/obj/item/missile/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
 	if(primed)
 		explosion(hit_atom, 0, 0, 2, 4)
 		qdel(src)
